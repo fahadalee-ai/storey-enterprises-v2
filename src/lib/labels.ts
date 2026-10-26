@@ -34,7 +34,6 @@ export function profileGaps(user: UserProfile | null) {
   if (!user.email.trim()) gaps.push("Email");
   if (!user.phone.trim()) gaps.push("Mobile phone");
   if (user.accountType === "business" && !user.companyName.trim()) gaps.push("Company name");
-  if (!user.billingAddress.trim()) gaps.push("Billing address");
   if (!user.billingEmail.trim()) gaps.push("Billing email");
   return gaps;
 }

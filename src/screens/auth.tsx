@@ -4,6 +4,8 @@ import { Eye, EyeOff, Check } from "lucide-react";
 import {
   AppleMark,
   Button,
+  ChoiceButton,
+  ChoiceGroup,
   Field,
   GoogleMark,
   LegalSheet,
@@ -323,21 +325,13 @@ export function RegisterScreen() {
         </Field>
         <fieldset>
           <legend className="mb-2 text-[14px] font-medium text-[#0F172A]">Account type</legend>
-          <div className="grid grid-cols-2 gap-2">
+          <ChoiceGroup className="grid-cols-2">
             {(["individual", "business"] as const).map((type) => (
-              <button
-                key={type}
-                type="button"
-                onClick={() => set("accountType", type)}
-                className={cn(
-                  "h-12 rounded-[12px] border text-[14px] font-semibold capitalize",
-                  form.accountType === type ? "border-[#003DF9] bg-[#003DF9]/10 text-[#003DF9]" : "border-[#E2E8F0] text-[#0F172A]",
-                )}
-              >
+              <ChoiceButton key={type} selected={form.accountType === type} onClick={() => set("accountType", type)} className="capitalize">
                 {type}
-              </button>
+              </ChoiceButton>
             ))}
-          </div>
+          </ChoiceGroup>
         </fieldset>
         {form.accountType === "business" ? (
           <div className="space-y-4">

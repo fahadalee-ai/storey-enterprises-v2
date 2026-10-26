@@ -54,7 +54,7 @@ export function ChatScreen({ id }: { id: string }) {
   if (!thread) {
     return (
       <Screen>
-        <StackHeader title="Message" />
+        <StackHeader title="Message" backTo="/messages" />
         <EmptyState title="Conversation not found" body="Open Messages and choose a thread." />
       </Screen>
     );
@@ -76,7 +76,7 @@ export function ChatScreen({ id }: { id: string }) {
 
   return (
     <Screen>
-      <StackHeader title={thread.title} right={<span className="pr-3 text-[12px] text-[#64748B]">{thread.shipmentId ?? "Support"}</span>} />
+      <StackHeader title={thread.title} backTo="/messages" right={<span className="pr-3 text-[12px] text-[#64748B]">{thread.shipmentId ?? "Support"}</span>} />
       <div className="min-h-0 flex-1 space-y-3 overflow-y-auto bg-[#F6F7FB] px-4 py-4">
         {thread.messages.map((message) => (
           <div key={message.id} className={cn("flex", message.from === "user" ? "justify-end" : "justify-start")}>
@@ -168,6 +168,7 @@ export function NotificationsScreen() {
   return (
     <Screen tone="surface">
       <StackHeader
+        backTo="/home"
         title="Notifications"
         right={
           <button type="button" className="min-h-11 pr-2 text-[12px] font-semibold text-[#003DF9]" onClick={() => markAllRead()}>
@@ -195,7 +196,7 @@ export function NotificationSettingsScreen() {
   const categories = Object.keys(notify) as Array<keyof typeof notify>;
   return (
     <Screen tone="surface">
-      <StackHeader title="Notification settings" />
+      <StackHeader title="Notification settings" backTo="/notifications" />
       <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-8">
         {categories.map((category) => (
           <section key={category} className={cn(cardClass(), "mb-3 p-4")}>

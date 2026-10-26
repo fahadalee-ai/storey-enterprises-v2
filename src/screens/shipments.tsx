@@ -4,6 +4,8 @@ import { Filter, MapPin, MessageCircle, Phone, Search } from "lucide-react";
 import {
   AsyncBody,
   Button,
+  ChoiceButton,
+  ChoiceGroup,
   EmptyState,
   LargeTitle,
   PriceTable,
@@ -79,16 +81,16 @@ export function ShipmentsScreen() {
       </PullToRefresh>
       <Sheet open={filterOpen} title="Filter" onClose={() => setFilterOpen(false)}>
         <p className="text-[14px] font-medium">Service</p>
-        <div className="mt-2 flex flex-wrap gap-2">
-          <button type="button" className={cn("min-h-11 rounded-full px-3 text-[13px] font-semibold", !serviceId ? "bg-[#003DF9] text-white" : "bg-[#F6F7FB]")} onClick={() => setServiceId("")}>
+        <ChoiceGroup className="mt-2">
+          <ChoiceButton align="start" selected={!serviceId} onClick={() => setServiceId("")}>
             All
-          </button>
+          </ChoiceButton>
           {services.map((service) => (
-            <button key={service.id} type="button" className={cn("min-h-11 rounded-full px-3 text-[13px] font-semibold", serviceId === service.id ? "bg-[#003DF9] text-white" : "bg-[#F6F7FB]")} onClick={() => setServiceId(service.id)}>
+            <ChoiceButton key={service.id} align="start" selected={serviceId === service.id} onClick={() => setServiceId(service.id)}>
               {service.displayName}
-            </button>
+            </ChoiceButton>
           ))}
-        </div>
+        </ChoiceGroup>
         <div className="mt-4">
           <Button onClick={() => setFilterOpen(false)}>Show results</Button>
         </div>
@@ -311,18 +313,18 @@ export function ShipmentDetailScreen({ id }: { id: string }) {
           Date
           <input type="date" className="mt-1 h-12 w-full rounded-[12px] border border-[#E2E8F0] px-3" value={date} onChange={(event) => setDate(event.target.value)} />
         </label>
-        <div className="mt-3 flex flex-wrap gap-2">
+        <ChoiceGroup className="mt-3">
           {(date ? slotsFor(date) : []).map((slot) => (
-            <button key={slot} type="button" onClick={() => setWindowLabel(slot)} className={cn("min-h-11 rounded-full px-3 text-[12px] font-semibold", windowLabel === slot ? "bg-[#003DF9] text-white" : "bg-[#F6F7FB]")}>
+            <ChoiceButton key={slot} align="start" selected={windowLabel === slot} onClick={() => setWindowLabel(slot)}>
               {slot}
-            </button>
+            </ChoiceButton>
           ))}
           {DEADLINE_TIMES.slice(0, 4).map((time) => (
-            <button key={time} type="button" onClick={() => setWindowLabel(time)} className={cn("min-h-11 rounded-full px-3 text-[12px] font-semibold", windowLabel === time ? "bg-[#003DF9] text-white" : "bg-[#F6F7FB]")}>
+            <ChoiceButton key={time} align="start" selected={windowLabel === time} onClick={() => setWindowLabel(time)}>
               {time} ET
-            </button>
+            </ChoiceButton>
           ))}
-        </div>
+        </ChoiceGroup>
         <div className="mt-4">
           <Button
             disabled={!date || !windowLabel}

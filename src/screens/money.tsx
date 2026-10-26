@@ -16,7 +16,7 @@ export function QuoteScreen({ id }: { id: string }) {
   if (!shipment?.quote) {
     return (
       <Screen>
-        <StackHeader title="Quote" />
+        <StackHeader title="Quote" backTo="/shipments" />
         <EmptyState title="No quote yet" body="When dispatch sends a quote, the itemized rate will show here." />
       </Screen>
     );
@@ -24,7 +24,7 @@ export function QuoteScreen({ id }: { id: string }) {
   const quote = shipment.quote;
   return (
     <Screen tone="surface">
-      <StackHeader title={quote.id} />
+      <StackHeader title={quote.id} backTo="/shipments" />
       <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-4">
         <p className="text-[12px] font-semibold uppercase tracking-wide text-[#003DF9]">Quote received</p>
         <h1 className="mt-1 text-[22px] font-semibold text-[#0F172A]">{shipment.id}</h1>
@@ -97,7 +97,7 @@ export function PaymentScreen({ id }: { id: string }) {
   if (!shipment) {
     return (
       <Screen>
-        <StackHeader title="Payment" />
+        <StackHeader title="Payment" backTo="/shipments" />
         <EmptyState title="Shipment not found" body="Return to shipments and open the quote again." />
       </Screen>
     );
@@ -153,7 +153,7 @@ export function PaymentScreen({ id }: { id: string }) {
 
   return (
     <Screen tone="surface">
-      <StackHeader title="Payment" />
+      <StackHeader title="Payment" backTo="/shipments" />
       <div className="bg-[#F59E0B] px-4 py-2 text-[12px] font-semibold text-[#0F172A]">Square · TEST MODE. No real charge will be made.</div>
       <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
         {phase === "processing" ? (

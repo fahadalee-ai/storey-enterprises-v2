@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ButtonHTMLAttributes, type ReactNode } from "react";
-import { Link, useCanGoBack, useNavigate, useRouter, useRouterState } from "@tanstack/react-router";
+import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import {
   AlertCircle,
   AlarmClock,
@@ -81,18 +81,13 @@ export function StackHeader({
   right?: ReactNode;
   backTo?: "/home" | "/profile" | "/shipments" | "/messages" | "/notifications" | "/services";
 }) {
-  const router = useRouter();
   const navigate = useNavigate();
-  const canGoBack = useCanGoBack();
   return (
     <header className="relative z-30 flex shrink-0 items-center gap-1 bg-inherit px-2 pb-2 pt-[max(10px,env(safe-area-inset-top))] sm:pt-8">
       <button
         type="button"
         aria-label="Back"
-        onClick={() => {
-          if (canGoBack) router.history.back();
-          else navigate({ to: backTo });
-        }}
+        onClick={() => navigate({ to: backTo })}
         className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-[#0F172A] transition active:scale-95"
       >
         <ChevronLeft className="pointer-events-none h-6 w-6" strokeWidth={1.75} />
@@ -155,11 +150,10 @@ export function Field({
   children: ReactNode;
 }) {
   return (
-    <label className="block">
+    <div className="block">
       <span className="mb-1.5 flex items-center gap-1 text-[14px] font-medium text-[#0F172A]">
         {label}
         {required ? <span className="text-[#DC2626]">*</span> : null}
-        {!required && label.toLowerCase().includes("optional") ? null : null}
       </span>
       {children}
       {error ? (
@@ -170,7 +164,36 @@ export function Field({
       ) : hint ? (
         <span className="mt-1 block text-[12px] leading-snug text-[#64748B]">{hint}</span>
       ) : null}
-    </label>
+    </div>
+  );
+}
+
+export function ChoiceGroup({ className, children }: { className?: string; children: ReactNode }) {
+  return <div className={cn("grid grid-cols-1 gap-2", className)}>{children}</div>;
+}
+
+export function ChoiceButton({
+  selected = false,
+  align = "center",
+  className,
+  children,
+  ...props
+}: ButtonHTMLAttributes<HTMLButtonElement> & { selected?: boolean; align?: "start" | "center" }) {
+  return (
+    <button
+      {...props}
+      type="button"
+      aria-pressed={selected}
+      className={cn(
+        "flex min-h-12 w-full gap-2 rounded-[14px] border px-3 py-2.5 text-[14px] font-semibold leading-snug break-words transition active:scale-[0.99] disabled:cursor-not-allowed disabled:border-[#E2E8F0] disabled:bg-[#F1F5F9] disabled:text-[#94A3B8] disabled:active:scale-100",
+        align === "start" ? "items-center justify-between text-left" : "items-center justify-center text-center",
+        selected ? "border-[#003DF9] bg-[#003DF9]/10 text-[#003DF9]" : "border-[#E2E8F0] bg-white text-[#0F172A]",
+        className,
+      )}
+    >
+      {align === "start" ? <span className="min-w-0 flex-1">{children}</span> : children}
+      {align === "start" && selected ? <Check className="h-4 w-4 shrink-0" strokeWidth={1.75} /> : null}
+    </button>
   );
 }
 

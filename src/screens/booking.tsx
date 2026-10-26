@@ -3,6 +3,8 @@ import { useNavigate } from "@tanstack/react-router";
 import { Camera, ChevronLeft, ImagePlus, Info, Lock, Minus, Pencil, Plus, X } from "lucide-react";
 import {
   Button,
+  ChoiceButton,
+  ChoiceGroup,
   Field,
   LegalSheet,
   PriceTable,
@@ -35,7 +37,6 @@ function validate(step: number, draft: BookingDraft) {
   if (step === 2 || step === 3) {
     const stop = step === 2 ? draft.pickup : draft.dropoff;
     const key = step === 2 ? "pickup" : "drop";
-    if (!stop.address || stop.lat == null) errors[`${key}Address`] = "Select an address from the suggestions.";
     if (!stop.facility.trim()) errors[`${key}Facility`] = "Facility or business name is required.";
     if (!stop.contact.trim()) errors[`${key}Contact`] = "Contact name is required.";
     if (digits(stop.phone).length !== 10) errors[`${key}Phone`] = "Enter a 10-digit phone number.";
@@ -374,20 +375,19 @@ function StopForm({
   const outside = outOfArea(stop);
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap gap-2">
-        <button type="button" className="min-h-11 rounded-full bg-white px-3 text-[12px] font-semibold text-[#003DF9]" onClick={onProfile}>
+      <ChoiceGroup>
+        <ChoiceButton align="start" onClick={onProfile}>
           Use my profile address
-        </button>
+        </ChoiceButton>
         {addresses.map((address) => (
-          <button key={address.id} type="button" className="min-h-11 rounded-full bg-white px-3 text-[12px] font-semibold text-[#0F172A]" onClick={() => onSaved(address.placeId, address.line)}>
+          <ChoiceButton key={address.id} align="start" onClick={() => onSaved(address.placeId, address.line)}>
             {address.label}
-          </button>
+          </ChoiceButton>
         ))}
-      </div>
-      <Field label={`${title} address`} required error={errors[`${target}Address`]}>
+      </ChoiceGroup>
+      <Field label={`${title} address`}>
         <TextInput
           value={query}
-          invalid={!!errors[`${target}Address`]}
           placeholder="Search street, city, or facility"
           onChange={(event) => {
             setQuery(event.target.value);
@@ -475,43 +475,41 @@ function StepShipment({
     });
   };
   return (
-    <div className="space-y-4">
-      <p className="text-[12px] text-[#64748B]">Share packaging and handling instructions before pickup.</p>
+    <div className="space-y-3">
       <Field label="Shipment type" required error={errors.type}>
-        <div className="flex flex-wrap gap-2">
+        <ChoiceGroup className="grid-cols-2">
           {shipmentTypes.map((type) => (
-            <button key={type} type="button" onClick={() => setDetails({ type })} className={cn("min-h-11 rounded-full px-3 text-[13px] font-semibold", details.type === type ? "bg-[#003DF9] text-white" : "bg-white text-[#0F172A]")}>
+            <ChoiceButton key={type} selected={details.type === type} onClick={() => setDetails({ type })} className="h-full px-2 text-[13px]">
               {type}
-            </button>
+            </ChoiceButton>
           ))}
-        </div>
+        </ChoiceGroup>
       </Field>
-      <Field label="Box quantity" required error={errors.quantity}>
-        <div className="flex items-center gap-3">
-          <button type="button" aria-label="Decrease quantity" className="flex h-11 w-11 items-center justify-center rounded-full bg-white" onClick={() => setDetails({ quantity: Math.max(1, details.quantity - 1) })}>
-            <Minus className="h-5 w-5" strokeWidth={1.75} />
-          </button>
-          <span className="w-8 text-center text-[18px] font-semibold">{details.quantity}</span>
-          <button type="button" aria-label="Increase quantity" className="flex h-11 w-11 items-center justify-center rounded-full bg-white" onClick={() => setDetails({ quantity: details.quantity + 1 })}>
-            <Plus className="h-5 w-5" strokeWidth={1.75} />
-          </button>
-        </div>
-      </Field>
+      <div className="grid grid-cols-2 gap-3">
+        <Field label="Box quantity" required error={errors.quantity}>
+          <div className="flex h-12 items-center justify-between rounded-[12px] border border-[#E2E8F0] bg-white px-1">
+            <button type="button" aria-label="Decrease quantity" className="flex h-11 w-11 items-center justify-center rounded-full" onClick={() => setDetails({ quantity: Math.max(1, details.quantity - 1) })}>
+              <Minus className="h-5 w-5" strokeWidth={1.75} />
+            </button>
+            <span className="text-[18px] font-semibold">{details.quantity}</span>
+            <button type="button" aria-label="Increase quantity" className="flex h-11 w-11 items-center justify-center rounded-full" onClick={() => setDetails({ quantity: details.quantity + 1 })}>
+              <Plus className="h-5 w-5" strokeWidth={1.75} />
+            </button>
+          </div>
+        </Field>
+        <Field label="Declared value">
+          <TextInput inputMode="decimal" value={details.declaredValue} onChange={(event) => setDetails({ declaredValue: event.target.value })} placeholder="Optional" />
+        </Field>
+      </div>
       <Field label="Box size" required error={errors.boxSize || errors.custom}>
-        <div className="grid grid-cols-2 gap-2">
+        <ChoiceGroup className="grid-cols-2">
           {boxSizes.map((size) => (
-            <button key={size.id} type="button" onClick={() => setDetails({ boxSize: size.id })} className={cn("rounded-[12px] border p-3 text-left", details.boxSize === size.id ? "border-[#003DF9] bg-white" : "border-[#E2E8F0] bg-white")}>
+            <ChoiceButton key={size.id} align="start" selected={details.boxSize === size.id} onClick={() => setDetails({ boxSize: size.id })} className="h-full py-2">
               <span className="block text-[14px] font-semibold">{size.id}</span>
-              <span className="block text-[12px] text-[#64748B]">{size.hint}</span>
-            </button>
+              <span className={cn("block text-[12px] font-medium", details.boxSize === size.id ? "text-[#003DF9]/70" : "text-[#64748B]")}>{size.hint}</span>
+            </ChoiceButton>
           ))}
-        </div>
-        <div className="mt-3 flex items-end gap-2" aria-hidden>
-          {[16, 24, 34, 44].map((size) => (
-            <span key={size} className="rounded-sm border border-[#003DF9]/40 bg-[#003DF9]/10" style={{ width: size, height: size * 0.72 }} />
-          ))}
-          <span className="text-[12px] text-[#64748B]">Size guide</span>
-        </div>
+        </ChoiceGroup>
       </Field>
       {details.boxSize === "Custom" ? (
         <div className="grid grid-cols-3 gap-2">
@@ -534,68 +532,67 @@ function StepShipment({
           }}
         />
       </Field>
-      <Field label="Weight range" required error={errors.weightRange}>
-        <div className="flex flex-wrap gap-2">
+      <Field label="Weight range (lbs)" required error={errors.weightRange}>
+        <ChoiceGroup className="grid-cols-4">
           {weightRanges.map((range) => (
-            <button key={range} type="button" onClick={() => setDetails({ weightRange: range })} className={cn("min-h-11 rounded-full px-3 text-[13px] font-semibold", details.weightRange === range ? "bg-[#003DF9] text-white" : "bg-white")}>
-              {range} lbs
-            </button>
+            <ChoiceButton key={range} selected={details.weightRange === range} onClick={() => setDetails({ weightRange: range })} className="h-full px-1 text-[13px]">
+              {range}
+            </ChoiceButton>
           ))}
-        </div>
+        </ChoiceGroup>
       </Field>
       <Field label="Shipment description" required error={errors.description}>
-        <TextArea value={details.description} invalid={!!errors.description} onChange={(event) => setDetails({ description: event.target.value })} />
+        <TextArea rows={2} className="min-h-16" value={details.description} invalid={!!errors.description} onChange={(event) => setDetails({ description: event.target.value })} />
       </Field>
       <Field label="Handling instructions">
-        <div className="flex flex-wrap gap-2">
+        <ChoiceGroup className="grid-cols-2">
           {handlingOptions.map((option) => {
             const on = details.handling.includes(option);
             return (
-              <button key={option} type="button" onClick={() => setDetails({ handling: on ? details.handling.filter((item) => item !== option) : [...details.handling, option] })} className={cn("min-h-11 rounded-full px-3 text-[13px] font-semibold", on ? "bg-[#003DF9] text-white" : "bg-white")}>
+              <ChoiceButton key={option} selected={on} onClick={() => setDetails({ handling: on ? details.handling.filter((item) => item !== option) : [...details.handling, option] })} className="h-full px-2 text-[13px]">
                 {option}
-              </button>
+              </ChoiceButton>
             );
           })}
-        </div>
+        </ChoiceGroup>
       </Field>
       <Field label="Temperature requirement" required error={errors.temperature}>
-        <div className="grid grid-cols-2 gap-2">
+        <ChoiceGroup className="grid-cols-2">
           {temperatureOptions.map((option) => (
-            <button key={option} type="button" onClick={() => setDetails({ temperature: option })} className={cn("min-h-12 rounded-[12px] border px-2 text-[13px] font-semibold", details.temperature === option ? "border-[#003DF9] text-[#003DF9]" : "border-[#E2E8F0] bg-white")}>
+            <ChoiceButton key={option} selected={details.temperature === option} onClick={() => setDetails({ temperature: option })} className="h-full px-2 text-[13px]">
               {option}
-            </button>
+            </ChoiceButton>
           ))}
-        </div>
+        </ChoiceGroup>
       </Field>
       {details.temperature === "Other" ? (
         <Field label="Other temperature" required error={errors.temperatureOther}>
           <TextInput value={details.temperatureOther} invalid={!!errors.temperatureOther} onChange={(event) => setDetails({ temperatureOther: event.target.value })} />
         </Field>
       ) : null}
-      <Field label="Declared value" hint="Optional">
-        <TextInput inputMode="decimal" value={details.declaredValue} onChange={(event) => setDetails({ declaredValue: event.target.value })} placeholder="0.00" />
-      </Field>
-      <Field label="Item photos" hint="Optional, up to 5. Camera or gallery.">
-        <div className="flex gap-2">
-          <label className="flex h-11 items-center gap-2 rounded-[12px] bg-white px-3 text-[14px] font-semibold text-[#003DF9]">
-            <Camera className="h-4 w-4" strokeWidth={1.75} /> Camera
+      <Field label="Item photos" hint="Optional, up to 5">
+        <div className="grid grid-cols-2 gap-2">
+          <label className="flex min-h-12 items-center justify-center gap-2 rounded-[14px] border border-[#E2E8F0] bg-white px-3 text-[14px] font-semibold text-[#003DF9]">
+            <Camera className="h-4 w-4 shrink-0" strokeWidth={1.75} /> Camera
             <input type="file" accept="image/*" capture="environment" className="sr-only" onChange={(event) => addPhotos(event.target.files)} />
           </label>
-          <label className="flex h-11 items-center gap-2 rounded-[12px] bg-white px-3 text-[14px] font-semibold text-[#003DF9]">
-            <ImagePlus className="h-4 w-4" strokeWidth={1.75} /> Gallery
+          <label className="flex min-h-12 items-center justify-center gap-2 rounded-[14px] border border-[#E2E8F0] bg-white px-3 text-[14px] font-semibold text-[#003DF9]">
+            <ImagePlus className="h-4 w-4 shrink-0" strokeWidth={1.75} /> Gallery
             <input type="file" accept="image/*" multiple className="sr-only" onChange={(event) => addPhotos(event.target.files)} />
           </label>
         </div>
-        <div className="mt-3 flex gap-2 overflow-x-auto">
-          {details.photos.map((photo, index) => (
-            <span key={photo.slice(0, 24) + index} className="relative h-16 w-16 shrink-0">
-              <img src={photo} alt="" className="h-16 w-16 rounded-[12px] object-cover" />
-              <button type="button" aria-label="Remove photo" className="absolute -right-1 -top-1 flex h-6 w-6 items-center justify-center rounded-full bg-[#0F172A] text-white" onClick={() => setDetails({ photos: details.photos.filter((_, photoIndex) => photoIndex !== index) })}>
-                <X className="h-3 w-3" strokeWidth={1.75} />
-              </button>
-            </span>
-          ))}
-        </div>
+        {details.photos.length > 0 ? (
+          <div className="mt-2 flex gap-2 overflow-x-auto">
+            {details.photos.map((photo, index) => (
+              <span key={photo.slice(0, 24) + index} className="relative h-16 w-16 shrink-0">
+                <img src={photo} alt="" className="h-16 w-16 rounded-[12px] object-cover" />
+                <button type="button" aria-label="Remove photo" className="absolute -right-1 -top-1 flex h-6 w-6 items-center justify-center rounded-full bg-[#0F172A] text-white" onClick={() => setDetails({ photos: details.photos.filter((_, photoIndex) => photoIndex !== index) })}>
+                  <X className="h-3 w-3" strokeWidth={1.75} />
+                </button>
+              </span>
+            ))}
+          </div>
+        ) : null}
       </Field>
     </div>
   );
@@ -677,20 +674,26 @@ function StepSchedule({
         </Field>
       ) : (
         <Field label="Delivery window" required error={errors.window}>
-          <div className="grid grid-cols-2 gap-2">
+          <ChoiceGroup>
             {slots.map((slot) => {
               const state = slotState(draft.schedule.date, slot);
               const selected = draft.schedule.window === slot;
               return (
-                <button key={slot} type="button" disabled={state !== "open"} onClick={() => setDraft((current) => ({ ...current, schedule: { ...current.schedule, window: slot } }))} className={cn("min-h-12 rounded-[12px] border px-2 text-[13px] font-semibold", selected && "border-[#003DF9] bg-[#003DF9] text-white", !selected && state === "open" && "border-[#E2E8F0] bg-white", state !== "open" && "border-[#E2E8F0] bg-[#F1F5F9] text-[#94A3B8]")}>
-                  <span className="flex items-center justify-center gap-1">
-                    {state === "booked" ? <Lock className="h-3.5 w-3.5" strokeWidth={1.75} /> : null}
+                <ChoiceButton
+                  key={slot}
+                  align="start"
+                  selected={selected && state === "open"}
+                  disabled={state !== "open"}
+                  onClick={() => setDraft((current) => ({ ...current, schedule: { ...current.schedule, window: slot } }))}
+                >
+                  <span className="flex items-center gap-2">
+                    {state === "booked" ? <Lock className="h-4 w-4 shrink-0" strokeWidth={1.75} /> : null}
                     {slot}
                   </span>
-                </button>
+                </ChoiceButton>
               );
             })}
-          </div>
+          </ChoiceGroup>
         </Field>
       )}
       {!urgent ? (
@@ -750,13 +753,13 @@ function StepReview({
         <div className="rounded-[16px] border border-[#DC2626]/30 bg-white p-3">
           <p className="text-[14px] font-semibold text-[#DC2626]">Slot no longer available</p>
           <p className="mt-1 text-[13px] text-[#475569]">Choose another Eastern Time window.</p>
-          <div className="mt-2 flex flex-wrap gap-2">
+          <ChoiceGroup className="mt-2">
             {alternativeSlots(draft.schedule.date, draft.schedule.window).map((slot) => (
-              <button key={slot} type="button" className="min-h-11 rounded-full bg-[#003DF9]/10 px-3 text-[12px] font-semibold text-[#003DF9]" onClick={() => onPickSlot(slot)}>
+              <ChoiceButton key={slot} align="start" onClick={() => onPickSlot(slot)}>
                 {slot}
-              </button>
+              </ChoiceButton>
             ))}
-          </div>
+          </ChoiceGroup>
         </div>
       ) : null}
       {cards.map((card) => (
@@ -776,17 +779,17 @@ function StepReview({
       </section>
       <div className="rounded-[16px] bg-white p-3">
         <p className="text-[12px] font-semibold text-[#64748B]">Preview price state</p>
-        <div className="mt-2 grid grid-cols-3 gap-2">
+        <ChoiceGroup className="mt-2">
           {([
             ["auto", "Automatic"],
             ["book", "Instant rate"],
             ["quote", "Needs review"],
           ] as const).map(([mode, label]) => (
-            <button key={mode} type="button" onClick={() => onMode(mode)} className={cn("min-h-11 rounded-[12px] px-1 text-[12px] font-semibold", draft.priceMode === mode ? "bg-[#003DF9] text-white" : "bg-[#F6F7FB] text-[#0F172A]")}>
+            <ChoiceButton key={mode} align="start" selected={draft.priceMode === mode} onClick={() => onMode(mode)}>
               {label}
-            </button>
+            </ChoiceButton>
           ))}
-        </div>
+        </ChoiceGroup>
       </div>
       <PriceTable price={price} />
       <p className="text-[12px] leading-snug text-[#64748B]">

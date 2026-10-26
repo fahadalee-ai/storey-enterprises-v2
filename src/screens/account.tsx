@@ -28,6 +28,8 @@ import {
 import {
   AsyncBody,
   Button,
+  ChoiceButton,
+  ChoiceGroup,
   Field,
   Logo,
   RouteMap,
@@ -309,8 +311,8 @@ export function BillingScreen() {
               setError("Company name is required.");
               return;
             }
-            if (!billingAddress.trim() || !billingEmail.includes("@")) {
-              setError("Billing address and billing email are required.");
+            if (billingEmail.trim() && !billingEmail.includes("@")) {
+              setError("Enter a billing email.");
               return;
             }
             updateUser({ companyName, facilityType, billingAddress, billingEmail, taxId });
@@ -327,7 +329,7 @@ export function BillingScreen() {
               ))}
             </select>
           </Field>
-          <Field label="Billing address" required>
+          <Field label="Billing address">
             <TextArea id="billingAddress" value={billingAddress} onChange={(event) => setBillingAddress(event.target.value)} />
           </Field>
           <Field label="Billing email" required>
@@ -379,7 +381,7 @@ export function AddressesScreen() {
         </div>
       </ProfilePage>
       <Sheet open={open} title="Add address" onClose={() => setOpen(false)}>
-        <Field label="Label" required>
+        <Field label="Label">
           <TextInput value={label} onChange={(event) => setLabel(event.target.value)} placeholder="Main clinic" />
         </Field>
         <label className="mt-3 block text-[14px] font-medium">
@@ -394,10 +396,9 @@ export function AddressesScreen() {
         </label>
         <div className="mt-4">
           <Button
-            disabled={!label.trim() || !place}
             onClick={() => {
               if (!place) return;
-              addAddress({ label, line: place.label, facility: place.facility, placeId: place.id });
+              addAddress({ label: label.trim() || place.facility, line: place.label, facility: place.facility, placeId: place.id });
               setLabel("");
               setOpen(false);
             }}
@@ -523,13 +524,13 @@ export function SettingsScreen() {
         <section className={cn(cardClass(), "p-4")}>
           <h2 className="text-[16px] font-semibold">Preview states</h2>
           <p className="mt-1 text-[12px] text-[#64748B]">Show loading, empty, and error layouts on list screens.</p>
-          <div className="mt-3 grid grid-cols-2 gap-2">
+          <ChoiceGroup className="mt-3 grid-cols-2">
             {(["live", "loading", "empty", "error"] as const).map((mode) => (
-              <button key={mode} type="button" onClick={() => setListPreview(mode)} className={cn("h-11 rounded-[12px] text-[14px] font-semibold capitalize", listPreview === mode ? "bg-[#003DF9] text-white" : "bg-[#F6F7FB]")}>
+              <ChoiceButton key={mode} selected={listPreview === mode} onClick={() => setListPreview(mode)} className="capitalize">
                 {mode}
-              </button>
+              </ChoiceButton>
             ))}
-          </div>
+          </ChoiceGroup>
         </section>
         <section className={cn(cardClass(), "mt-3 p-4")}>
           <div className="flex items-center justify-between gap-3">
