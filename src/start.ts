@@ -1,6 +1,18 @@
 import { createStart, createCsrfMiddleware, createMiddleware } from "@tanstack/react-start";
 
+import previewHtml from "../public/preview.html?raw";
 import { renderErrorPage } from "./lib/error-page";
+
+const previewMiddleware = createMiddleware().server(async ({ next, request }) => {
+  const path = new URL(request.url).pathname.replace(/\/$/, "") || "/";
+  if (path !== "/preview.html") return next();
+  return new Response(previewHtml, {
+    headers: {
+      "content-type": "text/html; charset=utf-8",
+      "cache-control": "no-cache",
+    },
+  });
+});
 
 const errorMiddleware = createMiddleware().server(async ({ next }) => {
   try {
@@ -25,5 +37,5 @@ const csrfMiddleware = createCsrfMiddleware({
 });
 
 export const startInstance = createStart(() => ({
-  requestMiddleware: [errorMiddleware, csrfMiddleware],
+  requestMiddleware: [previewMiddleware, errorMiddleware, csrfMiddleware],
 }));

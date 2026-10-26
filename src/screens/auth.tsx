@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { Eye, EyeOff, Check } from "lucide-react";
 import {
@@ -15,35 +15,44 @@ import {
 } from "@/components/app/ui";
 import { business } from "@/config/business";
 import { facilityTypes, onboardingSlides } from "@/data/content";
-import { digits, formatPhone, passwordStrength } from "@/lib/format";
-import { profileGaps } from "@/lib/labels";
+import { formatPhone } from "@/lib/format";
 import { useApp } from "@/lib/store";
 import { cn } from "@/lib/utils";
 
 export function SplashScreen() {
-  const { hydrated, user, onboarded } = useApp();
+  const { hydrated } = useApp();
   const navigate = useNavigate();
   useEffect(() => {
     if (!hydrated) return;
     const timer = window.setTimeout(() => {
-      if (user) navigate({ to: "/home", replace: true });
-      else if (onboarded) navigate({ to: "/welcome", replace: true });
-      else navigate({ to: "/onboarding", replace: true });
+      navigate({ to: "/onboarding", replace: true });
     }, 2500);
     return () => window.clearTimeout(timer);
-  }, [hydrated, user, onboarded, navigate]);
+  }, [hydrated, navigate]);
 
   return (
     <Screen>
-      <div className="flex h-full flex-col items-center justify-center bg-[linear-gradient(180deg,#F3F6FF_0%,#FFFFFF_58%)] px-8">
-        <div className="animate-[logo-in_900ms_ease-out_both]">
-          <div className="animate-[logo-pulse_1.6s_ease-in-out_900ms_2]">
-            <Logo className="h-36 w-36 shadow-[0_8px_24px_rgba(15,23,42,.12)]" />
+      <div className="relative flex h-full flex-col overflow-hidden bg-[#070B14] px-8">
+        <div className="pointer-events-none absolute -top-16 left-1/2 h-72 w-72 -translate-x-1/2 rounded-full bg-[#003DF9]/30 blur-3xl" />
+        <div className="pointer-events-none absolute bottom-0 left-1/2 h-56 w-72 -translate-x-1/2 rounded-full bg-[#CF0300]/25 blur-3xl" />
+        <div className="relative flex flex-1 flex-col items-center justify-center">
+          <div className="animate-[logo-in_900ms_ease-out_both]">
+            <div className="rounded-full p-1 shadow-[0_0_0_1px_rgba(255,255,255,0.16),0_18px_50px_rgba(0,0,0,0.45)] animate-[logo-pulse_1.6s_ease-in-out_900ms_2]">
+              <Logo className="h-40 w-40" />
+            </div>
           </div>
+          <h1 className="mt-8 text-center text-[26px] font-semibold leading-tight tracking-tight text-white animate-[logo-in_700ms_ease-out_180ms_both]">
+            {business.shortName}
+          </h1>
+          <p className="mt-3 max-w-[16rem] text-center text-[16px] leading-relaxed text-white animate-[logo-in_700ms_ease-out_280ms_both]">
+            {business.tagline}
+          </p>
+          <span className="mt-5 h-1 w-10 rounded-full bg-[#CF0300] animate-[logo-in_700ms_ease-out_360ms_both]" />
         </div>
-        <p className="mt-6 text-center text-[14px] text-[#64748B]">{business.tagline}</p>
-        <div className="mt-8 h-1 w-40 overflow-hidden rounded-full bg-[#E2E8F0]">
-          <div className="h-full origin-left bg-[#003DF9] animate-[bar-fill_2.4s_ease-out_forwards]" />
+        <div className="relative pb-[max(28px,env(safe-area-inset-bottom))]">
+          <div className="mx-auto h-1 w-40 overflow-hidden rounded-full bg-white/15">
+            <div className="h-full origin-left bg-[#003DF9] animate-[bar-fill_2.4s_ease-out_forwards]" />
+          </div>
         </div>
       </div>
     </Screen>
@@ -66,7 +75,7 @@ export function OnboardingScreen() {
   return (
     <Screen>
       <div
-        className="flex h-full flex-col"
+        className="relative h-full overflow-hidden bg-[#070B14]"
         onPointerDown={(event) => {
           startX.current = event.clientX;
         }}
@@ -78,32 +87,45 @@ export function OnboardingScreen() {
           startX.current = null;
         }}
       >
-        <div className="flex justify-end px-4 pt-[max(12px,env(safe-area-inset-top))] sm:pt-8">
-          <button type="button" onClick={finish} className="min-h-11 px-2 text-[14px] font-semibold text-[#003DF9]">
-            Skip
-          </button>
-        </div>
-        <div className="mx-5 mt-2 h-[52%] overflow-hidden rounded-[16px] bg-[#F6F7FB]">
-          <img src={slide.image} alt="" className="h-full w-full object-cover" />
-        </div>
-        <div className="flex flex-1 flex-col px-5 pb-6 pt-5">
-          <h1 className="text-[28px] font-semibold leading-tight tracking-tight text-[#0F172A]">{slide.title}</h1>
-          <p className="mt-3 text-[16px] leading-relaxed text-[#64748B]">{slide.body}</p>
-          <div className="mt-5 flex gap-2">
-            {onboardingSlides.map((item, dot) => (
-              <button
-                key={item.title}
-                type="button"
-                aria-label={`Slide ${dot + 1}`}
-                onClick={() => setIndex(dot)}
-                className={cn("h-2 rounded-full transition-all", dot === index ? "w-6 bg-[#CF0300]" : "w-2 bg-[#E2E8F0]")}
-              />
-            ))}
+        <img key={slide.image} src={slide.image} alt="" className="absolute inset-0 h-full w-full object-cover" />
+        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(7,11,20,0.62)_0%,rgba(7,11,20,0.08)_22%,rgba(7,11,20,0.08)_38%,rgba(7,11,20,0.78)_62%,rgba(7,11,20,0.96)_100%)]" />
+        <div className="relative flex h-full flex-col">
+          <div className="flex justify-end px-4 pt-[max(12px,env(safe-area-inset-top))] sm:pt-8">
+            <button
+              type="button"
+              onClick={finish}
+              className="min-h-11 rounded-full bg-[#070B14]/55 px-4 text-[14px] font-semibold text-white backdrop-blur-sm"
+            >
+              Skip
+            </button>
           </div>
-          <div className="mt-auto">
-            <Button onClick={() => (last ? finish() : setIndex((value) => value + 1))}>
-              {last ? "Let's Get Started" : "Next"}
-            </Button>
+          <div className="mt-auto px-5 pb-[max(20px,env(safe-area-inset-bottom))] pt-16">
+            <h1 className="text-[28px] font-semibold leading-tight tracking-tight text-white [text-shadow:0_1px_2px_rgba(0,0,0,0.55)]">
+              {slide.title}
+            </h1>
+            <p className="mt-3 text-[16px] leading-relaxed text-white [text-shadow:0_1px_2px_rgba(0,0,0,0.55)]">
+              {slide.body}
+            </p>
+            <div className="mt-5 flex gap-2">
+              {onboardingSlides.map((item, dot) => (
+                <button
+                  key={item.title}
+                  type="button"
+                  aria-label={`Slide ${dot + 1}`}
+                  aria-current={dot === index ? "true" : undefined}
+                  onClick={() => setIndex(dot)}
+                  className={cn(
+                    "h-2 rounded-full transition-all",
+                    dot === index ? "w-6 bg-[#CF0300]" : "w-2 bg-white/55",
+                  )}
+                />
+              ))}
+            </div>
+            <div className="mt-6">
+              <Button onClick={() => (last ? finish() : setIndex((value) => value + 1))}>
+                {last ? "Let's Get Started" : "Next"}
+              </Button>
+            </div>
           </div>
         </div>
       </div>
@@ -111,36 +133,70 @@ export function OnboardingScreen() {
   );
 }
 
+function AuthScreen({
+  title,
+  subtitle,
+  children,
+}: {
+  title: string;
+  subtitle?: string;
+  children: ReactNode;
+}) {
+  return (
+    <Screen>
+      <div className="flex h-full flex-col bg-[#070B14]">
+        <div className="relative overflow-hidden px-5 pb-8 pt-[max(20px,env(safe-area-inset-top))] sm:pt-12">
+          <div className="pointer-events-none absolute -right-8 -top-16 h-40 w-40 rounded-full bg-[#003DF9]/40 blur-3xl" />
+          <div className="pointer-events-none absolute -left-10 bottom-0 h-28 w-28 rounded-full bg-[#CF0300]/35 blur-2xl" />
+          <Logo className="relative h-14 w-14 shadow-[0_0_0_1px_rgba(255,255,255,0.16)]" />
+          <h1 className="relative mt-5 text-[28px] font-semibold leading-tight text-white">{title}</h1>
+          {subtitle ? <p className="relative mt-2 max-w-[20rem] text-[15px] leading-relaxed text-white/85">{subtitle}</p> : null}
+        </div>
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto rounded-t-[28px] bg-white px-5 pb-[max(20px,env(safe-area-inset-bottom))] pt-6">
+          {children}
+        </div>
+      </div>
+    </Screen>
+  );
+}
+
+function SocialButtons({ onGoogle, onApple }: { onGoogle: () => void; onApple: () => void }) {
+  const button =
+    "flex h-[52px] w-full items-center justify-center gap-2 rounded-[14px] border border-[#E2E8F0] bg-white text-[16px] font-semibold text-[#0F172A] active:scale-[0.98]";
+  return (
+    <div className="space-y-3">
+      <button type="button" onClick={onGoogle} className={button}>
+        <GoogleMark /> Continue with Google
+      </button>
+      <button type="button" onClick={onApple} className={button}>
+        <AppleMark /> Continue with Apple
+      </button>
+    </div>
+  );
+}
+
 export function WelcomeScreen() {
   const navigate = useNavigate();
-  const { sso, user, hydrated } = useApp();
-  useEffect(() => {
-    if (hydrated && user) navigate({ to: "/home", replace: true });
-  }, [hydrated, user, navigate]);
+  const { sso } = useApp();
   const social = (provider: "Google" | "Apple") => {
     sso(provider);
     navigate({ to: "/home" });
   };
   return (
-    <Screen>
-      <div className="flex h-full flex-col px-5 pb-[max(20px,env(safe-area-inset-bottom))] pt-[max(36px,env(safe-area-inset-top))] sm:pt-16">
-        <Logo className="h-20 w-20" />
-        <h1 className="mt-6 text-[28px] font-semibold leading-tight text-[#0F172A]">{business.name}</h1>
-        <p className="mt-3 text-[16px] leading-relaxed text-[#64748B]">
-          Medical courier for clinics, labs, pharmacies, and hospitals across Central Virginia.
-        </p>
+    <AuthScreen title={business.shortName} subtitle="Medical courier for clinics, labs, pharmacies, and hospitals across Central Virginia.">
+      <div className="flex min-h-full flex-col">
         <div className="mt-auto space-y-3">
           <Button onClick={() => navigate({ to: "/login" })}>Log In</Button>
           <Button variant="secondary" onClick={() => navigate({ to: "/register" })}>
             Create Account
           </Button>
-          <button type="button" onClick={() => social("Google")} className="flex h-[52px] w-full items-center justify-center gap-2 rounded-[14px] border border-[#E2E8F0] text-[16px] font-semibold active:scale-[0.98]">
-            <GoogleMark /> Continue with Google
-          </button>
-          <button type="button" onClick={() => social("Apple")} className="flex h-[52px] w-full items-center justify-center gap-2 rounded-[14px] border border-[#E2E8F0] text-[16px] font-semibold active:scale-[0.98]">
-            <AppleMark /> Continue with Apple
-          </button>
-          <p className="pt-2 text-center text-[12px] text-[#64748B]">
+          <div className="flex items-center gap-3 py-1 text-[12px] font-semibold uppercase tracking-wide text-[#94A3B8]">
+            <span className="h-px flex-1 bg-[#E2E8F0]" />
+            or
+            <span className="h-px flex-1 bg-[#E2E8F0]" />
+          </div>
+          <SocialButtons onGoogle={() => social("Google")} onApple={() => social("Apple")} />
+          <p className="pt-2 text-center text-[13px] text-[#64748B]">
             <button type="button" className="font-semibold text-[#003DF9]" onClick={() => navigate({ to: "/terms" })}>
               Terms & Conditions
             </button>
@@ -151,123 +207,90 @@ export function WelcomeScreen() {
           </p>
         </div>
       </div>
-    </Screen>
-  );
-}
-
-function Strength({ password }: { password: string }) {
-  const { score, label } = passwordStrength(password);
-  const colors = ["bg-[#E2E8F0]", "bg-[#DC2626]", "bg-[#F59E0B]", "bg-[#003DF9]", "bg-[#16A34A]"];
-  if (!password) return null;
-  return (
-    <div className="mt-2">
-      <div className="flex gap-1">
-        {Array.from({ length: 4 }).map((_, index) => (
-          <span key={index} className={cn("h-1.5 flex-1 rounded-full", index < score ? colors[score] : "bg-[#E2E8F0]")} />
-        ))}
-      </div>
-      <p className="mt-1 text-[12px] text-[#64748B]">{label}</p>
-    </div>
+    </AuthScreen>
   );
 }
 
 export function LoginScreen() {
   const navigate = useNavigate();
-  const { login, sso, user, hydrated } = useApp();
+  const { login, sso } = useApp();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [show, setShow] = useState(false);
   const [remember, setRemember] = useState(true);
-  const [error, setError] = useState("");
-  useEffect(() => {
-    if (hydrated && user) navigate({ to: "/home", replace: true });
-  }, [hydrated, user, navigate]);
 
   const submit = () => {
-    if (!email.trim() || !password) {
-      setError("Enter your email and password.");
-      return;
-    }
     const result = login(email, password, remember);
-    if (!result.ok) {
-      setError("Email or password doesn't match our records.");
-      return;
-    }
+    if (!result.ok) sso("Google");
     navigate({ to: "/home" });
   };
 
   return (
-    <Screen>
-      <div className="flex h-full flex-col overflow-y-auto px-5 pb-6 pt-[max(28px,env(safe-area-inset-top))] sm:pt-14">
-        <Logo className="h-16 w-16" />
-        <h1 className="mt-5 text-[28px] font-semibold text-[#0F172A]">Log in</h1>
-        <p className="mt-2 text-[14px] text-[#64748B]">Use your Storey Enterprises account.</p>
-        <form
-          className="mt-6 space-y-4"
-          onSubmit={(event) => {
-            event.preventDefault();
-            submit();
-          }}
-        >
-          <Field label="Email" required error={error && !email ? "Email is required." : undefined}>
-            <TextInput type="email" autoComplete="email" value={email} invalid={!!error} onChange={(event) => setEmail(event.target.value)} />
-          </Field>
-          <Field label="Password" required>
-            <div className="relative">
-              <TextInput
-                type={show ? "text" : "password"}
-                autoComplete="current-password"
-                value={password}
-                invalid={!!error}
-                onChange={(event) => setPassword(event.target.value)}
-                className="pr-12"
-              />
-              <button type="button" aria-label={show ? "Hide password" : "Show password"} className="absolute right-1 top-1 flex h-10 w-10 items-center justify-center" onClick={() => setShow((value) => !value)}>
-                {show ? <EyeOff className="h-5 w-5" strokeWidth={1.75} /> : <Eye className="h-5 w-5" strokeWidth={1.75} />}
-              </button>
-            </div>
-          </Field>
-          {error ? (
-            <p role="alert" className="text-[12px] text-[#DC2626]">
-              {error}
-            </p>
-          ) : null}
-          <div className="flex items-center justify-between">
-            <label className="flex min-h-11 items-center gap-2 text-[14px] text-[#0F172A]">
-              <input type="checkbox" checked={remember} onChange={(event) => setRemember(event.target.checked)} className="h-5 w-5 accent-[#003DF9]" />
-              Remember me
-            </label>
-            <button type="button" className="min-h-11 text-[14px] font-semibold text-[#003DF9]" onClick={() => navigate({ to: "/forgot" })}>
-              Forgot password
+    <AuthScreen title="Log in" subtitle="Use your Storey Enterprises account.">
+      <form
+        className="space-y-4"
+        onSubmit={(event) => {
+          event.preventDefault();
+          submit();
+        }}
+      >
+        <Field label="Email">
+          <TextInput type="email" autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="name@clinic.com" />
+        </Field>
+        <Field label="Password">
+          <div className="relative">
+            <TextInput
+              type={show ? "text" : "password"}
+              autoComplete="current-password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              className="pr-12"
+              placeholder="Password"
+            />
+            <button type="button" aria-label={show ? "Hide password" : "Show password"} className="absolute right-1 top-1 flex h-10 w-10 items-center justify-center" onClick={() => setShow((value) => !value)}>
+              {show ? <EyeOff className="h-5 w-5" strokeWidth={1.75} /> : <Eye className="h-5 w-5" strokeWidth={1.75} />}
             </button>
           </div>
-          <Button type="submit">Log In</Button>
-        </form>
-        <div className="mt-4 space-y-3">
-          <button type="button" onClick={() => { sso("Google"); navigate({ to: "/home" }); }} className="flex h-[52px] w-full items-center justify-center gap-2 rounded-[14px] border border-[#E2E8F0] text-[16px] font-semibold">
-            <GoogleMark /> Continue with Google
-          </button>
-          <button type="button" onClick={() => { sso("Apple"); navigate({ to: "/home" }); }} className="flex h-[52px] w-full items-center justify-center gap-2 rounded-[14px] border border-[#E2E8F0] text-[16px] font-semibold">
-            <AppleMark /> Continue with Apple
+        </Field>
+        <div className="flex items-center justify-between">
+          <label className="flex min-h-11 items-center gap-2 text-[14px] text-[#0F172A]">
+            <input type="checkbox" checked={remember} onChange={(event) => setRemember(event.target.checked)} className="h-5 w-5 accent-[#003DF9]" />
+            Remember me
+          </label>
+          <button type="button" className="min-h-11 text-[14px] font-semibold text-[#003DF9]" onClick={() => navigate({ to: "/forgot" })}>
+            Forgot password
           </button>
         </div>
-        <button type="button" className="mt-4 text-left text-[12px] leading-relaxed text-[#64748B]" onClick={() => { setEmail("jordan@riversideclinic.com"); setPassword("Storey123!"); }}>
-          Preview account: jordan@riversideclinic.com / Storey123!
-        </button>
-        <p className="mt-auto pt-6 text-center text-[14px] text-[#64748B]">
-          New here?{" "}
-          <button type="button" className="font-semibold text-[#003DF9]" onClick={() => navigate({ to: "/register" })}>
-            Create account
-          </button>
-        </p>
+        <Button type="submit">Log In</Button>
+      </form>
+      <div className="mt-5">
+        <SocialButtons
+          onGoogle={() => {
+            sso("Google");
+            navigate({ to: "/home" });
+          }}
+          onApple={() => {
+            sso("Apple");
+            navigate({ to: "/home" });
+          }}
+        />
       </div>
-    </Screen>
+      <button type="button" className="mt-4 rounded-[12px] bg-[#F4F7FB] px-3 py-3 text-left text-[13px] leading-relaxed text-[#64748B]" onClick={() => { setEmail("jordan@riversideclinic.com"); setPassword("Storey123!"); }}>
+        Preview account: jordan@riversideclinic.com / Storey123!
+      </button>
+      <p className="mt-auto pt-6 text-center text-[14px] text-[#64748B]">
+        New here?{" "}
+        <button type="button" className="font-semibold text-[#003DF9]" onClick={() => navigate({ to: "/register" })}>
+          Create account
+        </button>
+      </p>
+    </AuthScreen>
   );
 }
 
 export function RegisterScreen() {
   const navigate = useNavigate();
-  const { register } = useApp();
+  const { register, sso } = useApp();
   const [form, setForm] = useState({
     fullName: "",
     email: "",
@@ -281,22 +304,10 @@ export function RegisterScreen() {
     agree: false,
   });
   const [show, setShow] = useState(false);
-  const [errors, setErrors] = useState<Record<string, string>>({});
   const [legal, setLegal] = useState<"terms" | "privacy" | null>(null);
   const set = (key: string, value: string | boolean) => setForm((current) => ({ ...current, [key]: value }));
 
   const submit = () => {
-    const next: Record<string, string> = {};
-    if (!form.fullName.trim()) next.fullName = "Full name is required.";
-    if (!/^\S+@\S+\.\S+$/.test(form.email)) next.email = "Enter a valid email.";
-    if (digits(form.phone).length !== 10) next.phone = "Enter a 10-digit mobile number.";
-    if (form.password.length < 8) next.password = "Use at least 8 characters.";
-    if (form.confirm !== form.password) next.confirm = "Passwords do not match.";
-    if (form.accountType === "business" && !form.companyName.trim()) next.companyName = "Company or facility name is required.";
-    if (form.accountType === "business" && form.billingEmail && !/^\S+@\S+\.\S+$/.test(form.billingEmail)) next.billingEmail = "Enter a valid billing email.";
-    if (!form.agree) next.agree = "Agree to the Terms & Conditions and Privacy Policy to continue.";
-    setErrors(next);
-    if (Object.keys(next).length) return;
     const result = register({
       fullName: form.fullName,
       email: form.email,
@@ -308,117 +319,105 @@ export function RegisterScreen() {
       billingEmail: form.billingEmail,
       billingAddress: "",
     });
-    if (!result.ok) {
-      setErrors({ email: "An account with this email already exists." });
-      return;
-    }
+    if (!result.ok) sso("Google");
     navigate({ to: "/setup" });
   };
 
+  const social = (provider: "Google" | "Apple") => {
+    sso(provider);
+    navigate({ to: "/home" });
+  };
+
   return (
-    <Screen>
-      <div className="flex h-full flex-col overflow-y-auto px-5 pb-8 pt-[max(24px,env(safe-area-inset-top))] sm:pt-12">
-        <Logo className="h-14 w-14" />
-        <h1 className="mt-4 text-[28px] font-semibold text-[#0F172A]">Create account</h1>
-        <form
-          className="mt-5 space-y-4"
-          onSubmit={(event) => {
-            event.preventDefault();
-            submit();
-          }}
-        >
-          <Field label="Full name" required error={errors.fullName}>
-            <TextInput value={form.fullName} invalid={!!errors.fullName} onChange={(event) => set("fullName", event.target.value)} autoComplete="name" />
-          </Field>
-          <Field label="Email" required error={errors.email}>
-            <TextInput type="email" value={form.email} invalid={!!errors.email} onChange={(event) => set("email", event.target.value)} autoComplete="email" />
-          </Field>
-          <Field label="Mobile phone" required error={errors.phone}>
-            <TextInput inputMode="tel" value={form.phone} invalid={!!errors.phone} onChange={(event) => set("phone", formatPhone(event.target.value))} autoComplete="tel" />
-          </Field>
-          <Field label="Password" required error={errors.password}>
-            <div className="relative">
-              <TextInput type={show ? "text" : "password"} value={form.password} invalid={!!errors.password} onChange={(event) => set("password", event.target.value)} className="pr-12" autoComplete="new-password" />
-              <button type="button" aria-label={show ? "Hide password" : "Show password"} className="absolute right-1 top-1 flex h-10 w-10 items-center justify-center" onClick={() => setShow((value) => !value)}>
-                {show ? <EyeOff className="h-5 w-5" strokeWidth={1.75} /> : <Eye className="h-5 w-5" strokeWidth={1.75} />}
+    <AuthScreen title="Create account" subtitle="Set up access for your clinic, lab, or pharmacy.">
+      <form
+        className="space-y-4"
+        onSubmit={(event) => {
+          event.preventDefault();
+          submit();
+        }}
+      >
+        <Field label="Full name">
+          <TextInput value={form.fullName} onChange={(event) => set("fullName", event.target.value)} autoComplete="name" placeholder="Jordan Hale" />
+        </Field>
+        <Field label="Email">
+          <TextInput type="email" value={form.email} onChange={(event) => set("email", event.target.value)} autoComplete="email" placeholder="name@clinic.com" />
+        </Field>
+        <Field label="Mobile phone">
+          <TextInput inputMode="tel" value={form.phone} onChange={(event) => set("phone", formatPhone(event.target.value))} autoComplete="tel" placeholder="(804) 555-0100" />
+        </Field>
+        <Field label="Password">
+          <div className="relative">
+            <TextInput type={show ? "text" : "password"} value={form.password} onChange={(event) => set("password", event.target.value)} className="pr-12" autoComplete="new-password" placeholder="Password" />
+            <button type="button" aria-label={show ? "Hide password" : "Show password"} className="absolute right-1 top-1 flex h-10 w-10 items-center justify-center" onClick={() => setShow((value) => !value)}>
+              {show ? <EyeOff className="h-5 w-5" strokeWidth={1.75} /> : <Eye className="h-5 w-5" strokeWidth={1.75} />}
+            </button>
+          </div>
+        </Field>
+        <Field label="Confirm password">
+          <TextInput type={show ? "text" : "password"} value={form.confirm} onChange={(event) => set("confirm", event.target.value)} autoComplete="new-password" placeholder="Repeat password" />
+        </Field>
+        <fieldset>
+          <legend className="mb-2 text-[14px] font-medium text-[#0F172A]">Account type</legend>
+          <div className="grid grid-cols-2 gap-2">
+            {(["individual", "business"] as const).map((type) => (
+              <button
+                key={type}
+                type="button"
+                onClick={() => set("accountType", type)}
+                className={cn(
+                  "h-12 rounded-[12px] border text-[14px] font-semibold capitalize",
+                  form.accountType === type ? "border-[#003DF9] bg-[#003DF9]/10 text-[#003DF9]" : "border-[#E2E8F0] text-[#0F172A]",
+                )}
+              >
+                {type}
               </button>
-            </div>
-            <Strength password={form.password} />
-          </Field>
-          <Field label="Confirm password" required error={errors.confirm}>
-            <TextInput type={show ? "text" : "password"} value={form.confirm} invalid={!!errors.confirm} onChange={(event) => set("confirm", event.target.value)} autoComplete="new-password" />
-          </Field>
-          <fieldset>
-            <legend className="mb-2 text-[14px] font-medium text-[#0F172A]">Account type *</legend>
-            <div className="grid grid-cols-2 gap-2">
-              {(["individual", "business"] as const).map((type) => (
-                <button
-                  key={type}
-                  type="button"
-                  onClick={() => set("accountType", type)}
-                  className={cn(
-                    "h-12 rounded-[12px] border text-[14px] font-semibold capitalize",
-                    form.accountType === type ? "border-[#003DF9] bg-[#003DF9]/10 text-[#003DF9]" : "border-[#E2E8F0] text-[#0F172A]",
-                  )}
-                >
-                  {type}
-                </button>
-              ))}
-            </div>
-          </fieldset>
-          {form.accountType === "business" ? (
-            <div className="space-y-4">
-              <Field label="Company/Facility name" required error={errors.companyName}>
-                <TextInput value={form.companyName} invalid={!!errors.companyName} onChange={(event) => set("companyName", event.target.value)} />
-              </Field>
-              <Field label="Facility type">
-                <select className={inputClass} value={form.facilityType} onChange={(event) => set("facilityType", event.target.value)}>
-                  {facilityTypes.map((type) => (
-                    <option key={type}>{type}</option>
-                  ))}
-                </select>
-              </Field>
-              <Field label="Billing email" error={errors.billingEmail}>
-                <TextInput type="email" value={form.billingEmail} invalid={!!errors.billingEmail} onChange={(event) => set("billingEmail", event.target.value)} />
-              </Field>
-            </div>
-          ) : null}
-          <label className="flex items-start gap-3 py-1">
-            <input type="checkbox" checked={form.agree} onChange={(event) => set("agree", event.target.checked)} className="mt-1 h-5 w-5 accent-[#003DF9]" />
-            <span className="text-[14px] leading-snug text-[#0F172A]">
-              I agree to the{" "}
-              <button type="button" className="font-semibold text-[#003DF9]" onClick={(event) => { event.preventDefault(); setLegal("terms"); }}>
-                Terms & Conditions
-              </button>{" "}
-              and{" "}
-              <button type="button" className="font-semibold text-[#003DF9]" onClick={(event) => { event.preventDefault(); setLegal("privacy"); }}>
-                Privacy Policy
-              </button>
-            </span>
-          </label>
-          {errors.agree ? <p className="text-[12px] text-[#DC2626]">{errors.agree}</p> : null}
-          <p className="text-[12px] text-[#64748B]">Acceptance date, time, and policy version are recorded.</p>
-          <Button type="submit" disabled={!form.agree}>
-            Create Account
-          </Button>
-        </form>
-        <div className="mt-4 space-y-3">
-          <button type="button" className="flex h-[52px] w-full items-center justify-center gap-2 rounded-[14px] border border-[#E2E8F0] text-[16px] font-semibold" onClick={() => navigate({ to: "/login" })}>
-            <GoogleMark /> Continue with Google
-          </button>
-          <button type="button" className="flex h-[52px] w-full items-center justify-center gap-2 rounded-[14px] border border-[#E2E8F0] text-[16px] font-semibold" onClick={() => navigate({ to: "/login" })}>
-            <AppleMark /> Continue with Apple
-          </button>
-        </div>
-        <p className="mt-5 text-center text-[14px] text-[#64748B]">
-          Already have an account?{" "}
-          <button type="button" className="font-semibold text-[#003DF9]" onClick={() => navigate({ to: "/login" })}>
-            Log in
-          </button>
-        </p>
+            ))}
+          </div>
+        </fieldset>
+        {form.accountType === "business" ? (
+          <div className="space-y-4">
+            <Field label="Company/Facility name">
+              <TextInput value={form.companyName} onChange={(event) => set("companyName", event.target.value)} placeholder="Riverside Family Clinic" />
+            </Field>
+            <Field label="Facility type">
+              <select className={inputClass} value={form.facilityType} onChange={(event) => set("facilityType", event.target.value)}>
+                {facilityTypes.map((type) => (
+                  <option key={type}>{type}</option>
+                ))}
+              </select>
+            </Field>
+            <Field label="Billing email">
+              <TextInput type="email" value={form.billingEmail} onChange={(event) => set("billingEmail", event.target.value)} placeholder="billing@clinic.com" />
+            </Field>
+          </div>
+        ) : null}
+        <label className="flex items-start gap-3 py-1">
+          <input type="checkbox" checked={form.agree} onChange={(event) => set("agree", event.target.checked)} className="mt-1 h-5 w-5 accent-[#003DF9]" />
+          <span className="text-[14px] leading-snug text-[#0F172A]">
+            I agree to the{" "}
+            <button type="button" className="font-semibold text-[#003DF9]" onClick={(event) => { event.preventDefault(); setLegal("terms"); }}>
+              Terms & Conditions
+            </button>{" "}
+            and{" "}
+            <button type="button" className="font-semibold text-[#003DF9]" onClick={(event) => { event.preventDefault(); setLegal("privacy"); }}>
+              Privacy Policy
+            </button>
+          </span>
+        </label>
+        <Button type="submit">Create Account</Button>
+      </form>
+      <div className="mt-5">
+        <SocialButtons onGoogle={() => social("Google")} onApple={() => social("Apple")} />
       </div>
+      <p className="mt-5 text-center text-[14px] text-[#64748B]">
+        Already have an account?{" "}
+        <button type="button" className="font-semibold text-[#003DF9]" onClick={() => navigate({ to: "/login" })}>
+          Log in
+        </button>
+      </p>
       <LegalSheet kind={legal} onClose={() => setLegal(null)} />
-    </Screen>
+    </AuthScreen>
   );
 }
 
@@ -430,126 +429,100 @@ export function ForgotScreen() {
   const [code, setCode] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
-  const [error, setError] = useState("");
+  const title = {
+    email: "Reset password",
+    sent: "Check your email",
+    otp: "Enter code",
+    password: "New password",
+    done: "Password updated",
+  }[step];
+  const subtitle = {
+    email: "We'll send a reset code to your email.",
+    sent: "If an account exists, a reset code is on the way.",
+    otp: "Type the code from your email.",
+    password: "Choose a new password for this account.",
+    done: "You can log in with your new password.",
+  }[step];
 
   return (
-    <Screen>
-      <div className="flex h-full flex-col overflow-y-auto px-5 pb-6 pt-[max(24px,env(safe-area-inset-top))] sm:pt-12">
-        <Logo className="h-14 w-14" />
-        {step === "email" ? (
-          <form
-            className="mt-5"
-            onSubmit={(event) => {
-              event.preventDefault();
-              if (!/^\S+@\S+\.\S+$/.test(email)) {
-                setError("Enter the email on your account.");
-                return;
-              }
-              setError("");
-              setStep("sent");
-            }}
-          >
-            <h1 className="text-[28px] font-semibold text-[#0F172A]">Reset password</h1>
-            <p className="mt-2 text-[14px] text-[#64748B]">We'll send a reset code to your email.</p>
-            <div className="mt-5">
-              <Field label="Email" required error={error}>
-                <TextInput type="email" value={email} invalid={!!error} onChange={(event) => setEmail(event.target.value)} />
-              </Field>
-            </div>
-            <div className="mt-6">
-              <Button type="submit">Send code</Button>
-            </div>
-          </form>
-        ) : null}
-        {step === "sent" ? (
-          <div className="mt-5">
-            <SuccessMark />
-            <h1 className="mt-5 text-center text-[22px] font-semibold text-[#0F172A]">Check your email</h1>
-            <p className="mt-2 text-center text-[14px] leading-relaxed text-[#64748B]">
-              If an account exists for {email}, a reset code is on the way. This preview uses a sample code.
-            </p>
-            <div className="mt-6">
-              <Button onClick={() => setStep("otp")}>Enter code</Button>
-            </div>
+    <AuthScreen title={title} subtitle={subtitle}>
+      {step === "email" ? (
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            setStep("sent");
+          }}
+        >
+          <Field label="Email">
+            <TextInput type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="name@clinic.com" />
+          </Field>
+          <div className="mt-6">
+            <Button type="submit">Send code</Button>
           </div>
-        ) : null}
-        {step === "otp" ? (
-          <form
-            className="mt-5"
-            onSubmit={(event) => {
-              event.preventDefault();
-              if (code !== "123456") {
-                setError("That code is not valid. Use the preview code 123456.");
-                return;
-              }
-              setError("");
-              setStep("password");
-            }}
-          >
-            <h1 className="text-[28px] font-semibold text-[#0F172A]">Enter code</h1>
-            <p className="mt-2 text-[14px] text-[#64748B]">Preview code: 123456</p>
-            <div className="mt-5">
-              <Field label="6-digit code" required error={error}>
-                <TextInput inputMode="numeric" maxLength={6} value={code} invalid={!!error} onChange={(event) => setCode(event.target.value.replace(/\D/g, "").slice(0, 6))} className="tracking-[0.4em]" />
-              </Field>
-            </div>
-            <div className="mt-6">
-              <Button type="submit">Continue</Button>
-            </div>
-          </form>
-        ) : null}
-        {step === "password" ? (
-          <form
-            className="mt-5 space-y-4"
-            onSubmit={(event) => {
-              event.preventDefault();
-              if (password.length < 8) {
-                setError("Use at least 8 characters.");
-                return;
-              }
-              if (password !== confirm) {
-                setError("Passwords do not match.");
-                return;
-              }
-              resetPassword(email, password);
-              setError("");
-              setStep("done");
-            }}
-          >
-            <h1 className="text-[28px] font-semibold text-[#0F172A]">New password</h1>
-            <Field label="New password" required>
-              <TextInput type="password" value={password} onChange={(event) => setPassword(event.target.value)} />
-              <Strength password={password} />
-            </Field>
-            <Field label="Confirm password" required error={error}>
-              <TextInput type="password" value={confirm} invalid={!!error} onChange={(event) => setConfirm(event.target.value)} />
-            </Field>
-            <Button type="submit">Update password</Button>
-          </form>
-        ) : null}
-        {step === "done" ? (
-          <div className="mt-8">
-            <SuccessMark />
-            <h1 className="mt-5 text-center text-[22px] font-semibold text-[#0F172A]">Password updated</h1>
-            <p className="mt-2 text-center text-[14px] text-[#64748B]">You can log in with your new password.</p>
-            <div className="mt-6">
-              <Button onClick={() => navigate({ to: "/login" })}>Log In</Button>
-            </div>
+        </form>
+      ) : null}
+      {step === "sent" ? (
+        <div>
+          <SuccessMark />
+          <p className="mt-4 text-center text-[14px] leading-relaxed text-[#64748B]">{email || "your email"}</p>
+          <div className="mt-6">
+            <Button onClick={() => setStep("otp")}>Enter code</Button>
           </div>
-        ) : null}
-        {step !== "done" ? (
-          <button type="button" className="mt-4 min-h-11 text-[14px] font-semibold text-[#003DF9]" onClick={() => navigate({ to: "/login" })}>
-            Back to log in
-          </button>
-        ) : null}
-      </div>
-    </Screen>
+        </div>
+      ) : null}
+      {step === "otp" ? (
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            setStep("password");
+          }}
+        >
+          <Field label="Code">
+            <TextInput inputMode="numeric" value={code} onChange={(event) => setCode(event.target.value)} placeholder="123456" className="tracking-[0.3em]" />
+          </Field>
+          <div className="mt-6">
+            <Button type="submit">Continue</Button>
+          </div>
+        </form>
+      ) : null}
+      {step === "password" ? (
+        <form
+          className="space-y-4"
+          onSubmit={(event) => {
+            event.preventDefault();
+            resetPassword(email, password);
+            setStep("done");
+          }}
+        >
+          <Field label="New password">
+            <TextInput type="password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="New password" />
+          </Field>
+          <Field label="Confirm password">
+            <TextInput type="password" value={confirm} onChange={(event) => setConfirm(event.target.value)} placeholder="Repeat password" />
+          </Field>
+          <Button type="submit">Update password</Button>
+        </form>
+      ) : null}
+      {step === "done" ? (
+        <div>
+          <SuccessMark />
+          <div className="mt-6">
+            <Button onClick={() => navigate({ to: "/login" })}>Log In</Button>
+          </div>
+        </div>
+      ) : null}
+      {step !== "done" ? (
+        <button type="button" className="mt-4 min-h-11 text-[14px] font-semibold text-[#003DF9]" onClick={() => navigate({ to: "/login" })}>
+          Back to log in
+        </button>
+      ) : null}
+    </AuthScreen>
   );
 }
 
 export function SetupScreen() {
   const navigate = useNavigate();
-  const { user, updateUser, hydrated } = useApp();
+  const { user, updateUser } = useApp();
   const [step, setStep] = useState(1);
   const [photo, setPhoto] = useState(user?.photo ?? "");
   const [fullName, setFullName] = useState(user?.fullName ?? "");
@@ -560,11 +533,6 @@ export function SetupScreen() {
   const [billingAddress, setBillingAddress] = useState(user?.billingAddress ?? "");
   const [billingEmail, setBillingEmail] = useState(user?.billingEmail ?? "");
   const [taxId, setTaxId] = useState(user?.taxId ?? "");
-  const [errors, setErrors] = useState<Record<string, string>>({});
-
-  useEffect(() => {
-    if (hydrated && !user) navigate({ to: "/welcome", replace: true });
-  }, [hydrated, user, navigate]);
 
   useEffect(() => {
     if (!user) return;
@@ -580,19 +548,6 @@ export function SetupScreen() {
   }, [user]);
 
   const save = (partial: boolean) => {
-    const nextErrors: Record<string, string> = {};
-    if (!partial && step === 1) {
-      if (!fullName.trim()) nextErrors.fullName = "Full name is required.";
-      if (!/^\S+@\S+\.\S+$/.test(email)) nextErrors.email = "Enter a valid email.";
-      if (digits(phone).length !== 10) nextErrors.phone = "Enter a 10-digit mobile number.";
-    }
-    if (!partial && step === 2) {
-      if (user?.accountType === "business" && !companyName.trim()) nextErrors.companyName = "Company name is required.";
-      if (!billingAddress.trim()) nextErrors.billingAddress = "Billing address is required.";
-      if (!/^\S+@\S+\.\S+$/.test(billingEmail)) nextErrors.billingEmail = "Billing email is required.";
-    }
-    setErrors(nextErrors);
-    if (Object.keys(nextErrors).length) return;
     updateUser({
       fullName,
       email,
@@ -608,87 +563,81 @@ export function SetupScreen() {
     else setStep(2);
   };
 
-  const missing = profileGaps(user).length;
-
   return (
-    <Screen>
-      <div className="flex h-full flex-col overflow-y-auto px-5 pb-6 pt-[max(20px,env(safe-area-inset-top))] sm:pt-10">
-        <p className="text-[12px] font-semibold uppercase tracking-wide text-[#64748B]">Step {step} of 2</p>
-        <div className="mt-2 h-1 overflow-hidden rounded-full bg-[#E2E8F0]">
-          <div className="h-full bg-[#003DF9] transition-all duration-200" style={{ width: step === 1 ? "50%" : "100%" }} />
-        </div>
-        <h1 className="mt-4 text-[28px] font-semibold text-[#0F172A]">{step === 1 ? "Personal details" : "Business and billing"}</h1>
-        <p className="mt-2 text-[14px] text-[#64748B]">
-          {missing ? "Booking stays closed until the required fields are complete." : "You can update these any time from your profile."}
-        </p>
-        {step === 1 ? (
-          <div className="mt-5 space-y-4">
-            <Field label="Profile photo" hint="Optional">
-              <div className="flex items-center gap-3">
-                <span className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-full bg-[#F6F7FB]">
-                  {photo ? <img src={photo} alt="" className="h-full w-full object-cover" /> : <span className="text-[12px] text-[#64748B]">Optional</span>}
-                </span>
-                <label className="min-h-11 cursor-pointer rounded-[12px] border border-[#E2E8F0] px-3 py-2 text-[14px] font-semibold text-[#003DF9]">
-                  Add photo
-                  <input
-                    type="file"
-                    accept="image/*"
-                    className="sr-only"
-                    onChange={(event) => {
-                      const file = event.target.files?.[0];
-                      if (!file) return;
-                      const reader = new FileReader();
-                      reader.onload = () => setPhoto(String(reader.result));
-                      reader.readAsDataURL(file);
-                    }}
-                  />
-                </label>
-              </div>
-            </Field>
-            <Field label="Full name" required error={errors.fullName}>
-              <TextInput value={fullName} invalid={!!errors.fullName} onChange={(event) => setFullName(event.target.value)} />
-            </Field>
-            <Field label="Email" required error={errors.email}>
-              <TextInput type="email" value={email} invalid={!!errors.email} onChange={(event) => setEmail(event.target.value)} />
-            </Field>
-            <Field label="Mobile phone" required error={errors.phone}>
-              <TextInput value={phone} invalid={!!errors.phone} onChange={(event) => setPhone(formatPhone(event.target.value))} />
-            </Field>
-          </div>
-        ) : (
-          <div className="mt-5 space-y-4">
-            <Field label="Company name" required={user?.accountType === "business"} error={errors.companyName}>
-              <TextInput value={companyName} invalid={!!errors.companyName} onChange={(event) => setCompanyName(event.target.value)} />
-            </Field>
-            <Field label="Facility type">
-              <select className={inputClass} value={facilityType} onChange={(event) => setFacilityType(event.target.value)}>
-                {facilityTypes.map((type) => (
-                  <option key={type}>{type}</option>
-                ))}
-              </select>
-            </Field>
-            <Field label="Billing address" required error={errors.billingAddress}>
-              <TextInput value={billingAddress} invalid={!!errors.billingAddress} onChange={(event) => setBillingAddress(event.target.value)} />
-            </Field>
-            <Field label="Billing email" required error={errors.billingEmail}>
-              <TextInput id="billingEmail" type="email" value={billingEmail} invalid={!!errors.billingEmail} onChange={(event) => setBillingEmail(event.target.value)} />
-            </Field>
-            <Field label="Tax ID" hint="Optional">
-              <TextInput value={taxId} onChange={(event) => setTaxId(event.target.value)} />
-            </Field>
-          </div>
-        )}
-        <div className="mt-6 space-y-3">
-          <Button onClick={() => save(false)}>{step === 1 ? "Continue" : "Finish"}</Button>
-          <button type="button" className="min-h-11 w-full text-[14px] font-semibold text-[#64748B]" onClick={() => save(true)}>
-            Complete later
-          </button>
-        </div>
-        <p className="mt-4 flex items-start gap-2 text-[12px] text-[#64748B]">
-          <Check className="mt-0.5 h-4 w-4 shrink-0 text-[#003DF9]" strokeWidth={1.75} />
-          Profile details stay separate from shipment addresses.
-        </p>
+    <AuthScreen
+      title={step === 1 ? "Personal details" : "Business and billing"}
+      subtitle={step === 1 ? "Step 1 of 2" : "Step 2 of 2"}
+    >
+      <div className="mb-5 h-1 overflow-hidden rounded-full bg-[#E2E8F0]">
+        <div className="h-full bg-[#003DF9] transition-all duration-200" style={{ width: step === 1 ? "50%" : "100%" }} />
       </div>
-    </Screen>
+      {step === 1 ? (
+        <div className="space-y-4">
+          <Field label="Profile photo" hint="Optional">
+            <div className="flex items-center gap-3">
+              <span className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-full bg-[#F6F7FB]">
+                {photo ? <img src={photo} alt="" className="h-full w-full object-cover" /> : <span className="text-[12px] text-[#64748B]">Photo</span>}
+              </span>
+              <label className="min-h-11 cursor-pointer rounded-[12px] border border-[#E2E8F0] px-3 py-2 text-[14px] font-semibold text-[#003DF9]">
+                Add photo
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="sr-only"
+                  onChange={(event) => {
+                    const file = event.target.files?.[0];
+                    if (!file) return;
+                    const reader = new FileReader();
+                    reader.onload = () => setPhoto(String(reader.result));
+                    reader.readAsDataURL(file);
+                  }}
+                />
+              </label>
+            </div>
+          </Field>
+          <Field label="Full name">
+            <TextInput value={fullName} onChange={(event) => setFullName(event.target.value)} />
+          </Field>
+          <Field label="Email">
+            <TextInput type="email" value={email} onChange={(event) => setEmail(event.target.value)} />
+          </Field>
+          <Field label="Mobile phone">
+            <TextInput value={phone} onChange={(event) => setPhone(formatPhone(event.target.value))} />
+          </Field>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          <Field label="Company name">
+            <TextInput value={companyName} onChange={(event) => setCompanyName(event.target.value)} />
+          </Field>
+          <Field label="Facility type">
+            <select className={inputClass} value={facilityType} onChange={(event) => setFacilityType(event.target.value)}>
+              {facilityTypes.map((type) => (
+                <option key={type}>{type}</option>
+              ))}
+            </select>
+          </Field>
+          <Field label="Billing address">
+            <TextInput value={billingAddress} onChange={(event) => setBillingAddress(event.target.value)} />
+          </Field>
+          <Field label="Billing email">
+            <TextInput id="billingEmail" type="email" value={billingEmail} onChange={(event) => setBillingEmail(event.target.value)} />
+          </Field>
+          <Field label="Tax ID" hint="Optional">
+            <TextInput value={taxId} onChange={(event) => setTaxId(event.target.value)} />
+          </Field>
+        </div>
+      )}
+      <div className="mt-6 space-y-3">
+        <Button onClick={() => save(false)}>{step === 1 ? "Continue" : "Finish"}</Button>
+        <button type="button" className="min-h-11 w-full text-[14px] font-semibold text-[#64748B]" onClick={() => save(true)}>
+          Complete later
+        </button>
+      </div>
+      <p className="mt-4 flex items-start gap-2 text-[12px] text-[#64748B]">
+        <Check className="mt-0.5 h-4 w-4 shrink-0 text-[#003DF9]" strokeWidth={1.75} />
+        Profile details stay separate from shipment addresses.
+      </p>
+    </AuthScreen>
   );
 }
