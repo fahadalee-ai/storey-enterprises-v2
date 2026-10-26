@@ -4,6 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Mobile App Preview</title>
+  <link rel="icon" href="./public/favicon.ico" sizes="any" />
+  <link rel="icon" href="./public/favicon-32.png" type="image/png" sizes="32x32" />
   <style>
     :root {
       --bg: #0b0b0c;
@@ -280,11 +282,11 @@
   </div>
 
     <script>
-      const PRODUCTION_URL = "https://demo.sourapps.com/";
+      const PRODUCTION_URL = "/";
 
     function defaultAppUrl() {
       if (location.protocol === "file:") {
-        return "http://localhost:5173/";
+        return "http://localhost:8080/";
       }
       if (location.hostname === "localhost" || location.hostname === "127.0.0.1") {
         return location.origin + "/";
