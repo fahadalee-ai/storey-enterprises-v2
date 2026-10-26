@@ -16,7 +16,7 @@ export function HomeScreen() {
   const unread = notifications.filter((item) => !item.read).length;
   const active = shipments.find((item) => ["in_transit", "en_route_pickup", "picked_up", "exception"].includes(item.status)) ?? shipments.find((item) => item.status === "driver_assigned");
   useEffect(() => {
-    if (hydrated && !user) navigate({ to: "/welcome", replace: true });
+    if (hydrated && !user) navigate({ to: "/login", replace: true });
   }, [hydrated, user, navigate]);
   const first = user?.fullName.split(" ")[0] || "there";
   return (

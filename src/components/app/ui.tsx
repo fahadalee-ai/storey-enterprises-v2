@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ButtonHTMLAttributes, type ReactNode } from "react";
-import { Link, useNavigate, useRouter, useRouterState } from "@tanstack/react-router";
+import { Link, useCanGoBack, useNavigate, useRouter, useRouterState } from "@tanstack/react-router";
 import {
   AlertCircle,
   AlarmClock,
@@ -72,17 +72,30 @@ export function OfflineBanner() {
   );
 }
 
-export function StackHeader({ title, right }: { title: string; right?: ReactNode }) {
+export function StackHeader({
+  title,
+  right,
+  backTo = "/home",
+}: {
+  title: string;
+  right?: ReactNode;
+  backTo?: "/home" | "/profile" | "/shipments" | "/messages" | "/notifications" | "/services";
+}) {
   const router = useRouter();
+  const navigate = useNavigate();
+  const canGoBack = useCanGoBack();
   return (
-    <header className="flex shrink-0 items-center gap-1 px-2 pb-2 pt-[max(10px,env(safe-area-inset-top))] sm:pt-8">
+    <header className="relative z-30 flex shrink-0 items-center gap-1 bg-inherit px-2 pb-2 pt-[max(10px,env(safe-area-inset-top))] sm:pt-8">
       <button
         type="button"
         aria-label="Back"
-        onClick={() => router.history.back()}
-        className="flex h-11 w-11 items-center justify-center rounded-full text-[#0F172A] transition active:scale-95"
+        onClick={() => {
+          if (canGoBack) router.history.back();
+          else navigate({ to: backTo });
+        }}
+        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-[#0F172A] transition active:scale-95"
       >
-        <ChevronLeft className="h-6 w-6" strokeWidth={1.75} />
+        <ChevronLeft className="pointer-events-none h-6 w-6" strokeWidth={1.75} />
       </button>
       <h1 className="min-w-0 flex-1 truncate text-[18px] font-semibold text-[#0F172A]">{title}</h1>
       {right}
@@ -280,7 +293,10 @@ export function TabBar() {
     return (
       <Link
         to={to}
-        className={cn("flex min-h-11 flex-1 flex-col items-center justify-center gap-0.5 text-[12px]", on ? "text-[#003DF9]" : "text-[#64748B]")}
+        className={cn(
+          "flex min-h-14 flex-1 flex-col items-center justify-center gap-1 rounded-[14px] px-1 py-2 text-[12px] font-semibold leading-none",
+          on ? "bg-white/10 text-white" : "text-white/80",
+        )}
       >
         <span className="relative">
           <Icon className="h-6 w-6" strokeWidth={1.75} />
@@ -295,11 +311,11 @@ export function TabBar() {
     );
   };
   return (
-    <nav className="relative z-30 shrink-0 border-t border-[#E2E8F0] bg-white pb-[max(6px,env(safe-area-inset-bottom))] shadow-[0_-4px_16px_rgba(15,23,42,.04)]">
-      <div className="flex items-end px-1 pt-1">
+    <nav className="relative z-30 shrink-0 bg-[#070B14] px-3 pt-3 pb-[max(14px,env(safe-area-inset-bottom))] shadow-[0_-8px_24px_rgba(7,11,20,.18)]">
+      <div className="flex items-center gap-1">
         {item("/home", "Home", Home)}
         {item("/shipments", "Shipments", Package)}
-        <div className="flex flex-1 justify-center">
+        <div className="flex flex-1 justify-center px-1">
           <button
             type="button"
             aria-label="Book"
@@ -307,9 +323,9 @@ export function TabBar() {
               startBooking();
               navigate({ to: "/book" });
             }}
-            className="-mt-6 flex h-14 w-14 items-center justify-center rounded-full bg-[#003DF9] text-white shadow-[0_8px_20px_rgba(0,61,249,.35)] transition active:scale-[0.98]"
+            className="flex h-14 w-14 items-center justify-center rounded-full bg-[#003DF9] text-white shadow-[0_8px_20px_rgba(0,61,249,.45)] transition active:scale-[0.98]"
           >
-            <Plus className="h-7 w-7" strokeWidth={1.75} />
+            <Plus className="pointer-events-none h-7 w-7" strokeWidth={1.75} />
           </button>
         </div>
         {item("/messages", "Messages", MessageCircle, messages)}

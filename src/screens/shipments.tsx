@@ -137,7 +137,7 @@ export function ShipmentDetailScreen({ id }: { id: string }) {
   if (!shipment) {
     return (
       <Screen>
-        <StackHeader title="Shipment" />
+        <StackHeader title="Shipment" backTo="/shipments" />
         <EmptyState title="Shipment not found" body="It may have been removed from this preview." />
       </Screen>
     );
@@ -148,7 +148,7 @@ export function ShipmentDetailScreen({ id }: { id: string }) {
 
   return (
     <Screen tone="surface">
-      <StackHeader title={shipment.id} />
+      <StackHeader title={shipment.id} backTo="/shipments" />
       <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-8">
         <AsyncBody boot emptyTitle="Shipment hidden" emptyBody="Turn preview states back to live data.">
           <div className="space-y-4">

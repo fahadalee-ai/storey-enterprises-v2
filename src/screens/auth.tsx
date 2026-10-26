@@ -69,7 +69,7 @@ export function OnboardingScreen() {
 
   const finish = () => {
     markOnboarded();
-    navigate({ to: "/welcome" });
+    navigate({ to: "/login" });
   };
 
   return (
@@ -172,42 +172,6 @@ function SocialButtons({ onGoogle, onApple }: { onGoogle: () => void; onApple: (
         <AppleMark /> Continue with Apple
       </button>
     </div>
-  );
-}
-
-export function WelcomeScreen() {
-  const navigate = useNavigate();
-  const { sso } = useApp();
-  const social = (provider: "Google" | "Apple") => {
-    sso(provider);
-    navigate({ to: "/home" });
-  };
-  return (
-    <AuthScreen title={business.shortName} subtitle="Medical courier for clinics, labs, pharmacies, and hospitals across Central Virginia.">
-      <div className="flex min-h-full flex-col">
-        <div className="mt-auto space-y-3">
-          <Button onClick={() => navigate({ to: "/login" })}>Log In</Button>
-          <Button variant="secondary" onClick={() => navigate({ to: "/register" })}>
-            Create Account
-          </Button>
-          <div className="flex items-center gap-3 py-1 text-[12px] font-semibold uppercase tracking-wide text-[#94A3B8]">
-            <span className="h-px flex-1 bg-[#E2E8F0]" />
-            or
-            <span className="h-px flex-1 bg-[#E2E8F0]" />
-          </div>
-          <SocialButtons onGoogle={() => social("Google")} onApple={() => social("Apple")} />
-          <p className="pt-2 text-center text-[13px] text-[#64748B]">
-            <button type="button" className="font-semibold text-[#003DF9]" onClick={() => navigate({ to: "/terms" })}>
-              Terms & Conditions
-            </button>
-            <span> · </span>
-            <button type="button" className="font-semibold text-[#003DF9]" onClick={() => navigate({ to: "/privacy" })}>
-              Privacy Policy
-            </button>
-          </p>
-        </div>
-      </div>
-    </AuthScreen>
   );
 }
 
