@@ -70,6 +70,7 @@ export function emptyDraft(serviceId = "01"): BookingDraft {
     },
     schedule: { date: "", window: "", deadline: "" },
     priceMode: "auto",
+    drivingMiles: null,
     step: 1,
   };
 }

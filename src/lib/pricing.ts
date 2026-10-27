@@ -70,7 +70,12 @@ export function buildPrice(input: {
   return { lines, total, distanceMiles: miles };
 }
 
+export function milesFromOrigin(lat: number, lng: number) {
+  return routeMiles({ lat, lng }, { lat: business.origin.lat, lng: business.origin.lng });
+}
+
 export function draftMiles(draft: BookingDraft) {
+  if (draft.drivingMiles != null && draft.drivingMiles > 0) return draft.drivingMiles;
   return routeMiles(draft.pickup, draft.dropoff);
 }
 

@@ -226,6 +226,7 @@ export type BookingDraft = {
   };
   schedule: { date: string; window: string; deadline: string };
   priceMode: "auto" | "book" | "quote";
+  drivingMiles: number | null;
   step: number;
 };
 

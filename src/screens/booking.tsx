@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { Camera, ChevronLeft, ImagePlus, Info, Lock, Minus, Pencil, Plus, X } from "lucide-react";
 import {
@@ -24,7 +24,8 @@ import { services } from "@/data/services";
 import type { BookingDraft, Shipment, Stop } from "@/data/types";
 import { digits, formatDateET, formatMoney, formatPhone, isSaturday, isSunday, todayET } from "@/lib/format";
 import { gapRoute, profileGaps } from "@/lib/labels";
-import { DELIVERY_TYPES, draftMiles, draftPrice, intentLabel, outOfArea, submitIntent, weightRangeFor } from "@/lib/pricing";
+import { drivingDistance, geocodeAddress, placeDetails, suggestAddresses, type AddressSuggestion } from "@/lib/maps";
+import { DELIVERY_TYPES, draftMiles, draftPrice, intentLabel, milesFromOrigin, outOfArea, submitIntent, weightRangeFor } from "@/lib/pricing";
 import { DEADLINE_TIMES, alternativeSlots, isHoliday, isPastDate, monthMatrix, slotLostOnSubmit, slotState, slotsFor } from "@/lib/schedule";
 import { useApp } from "@/lib/store";
 import { cn } from "@/lib/utils";
@@ -87,8 +88,32 @@ export function BookingScreen() {
   const urgent = draft.deliveryType === "stat" || draft.deliveryType === "after-hours";
 
   const patchStop = (target: "pickup" | "dropoff", patch: Partial<Stop>) => {
-    setDraft((current) => ({ ...current, [target]: { ...current[target], ...patch } }));
+    setDraft((current) => ({
+      ...current,
+      drivingMiles: patch.address !== undefined || patch.lat !== undefined ? null : current.drivingMiles,
+      [target]: { ...current[target], ...patch },
+    }));
   };
+
+  useEffect(() => {
+    const pickup = draft.pickup;
+    const dropoff = draft.dropoff;
+    if (pickup.lat == null || pickup.lng == null || dropoff.lat == null || dropoff.lng == null) return;
+    let cancelled = false;
+    drivingDistance({
+      data: { originLat: pickup.lat, originLng: pickup.lng, destLat: dropoff.lat, destLng: dropoff.lng },
+    }).then((result) => {
+      if (cancelled || result.miles == null) return;
+      setDraft((current) => {
+        if (current.pickup.lat !== pickup.lat || current.pickup.lng !== pickup.lng) return current;
+        if (current.dropoff.lat !== dropoff.lat || current.dropoff.lng !== dropoff.lng) return current;
+        return { ...current, drivingMiles: result.miles };
+      });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [draft.pickup.lat, draft.pickup.lng, draft.dropoff.lat, draft.dropoff.lng]);
 
   const go = (next: number) => {
     if (next > step) {
@@ -204,8 +229,11 @@ export function BookingScreen() {
             ) : null}
           </div>
           <div className="shrink-0 border-t border-[#E2E8F0] bg-white px-4 py-3 pb-[max(12px,env(safe-area-inset-bottom))]">
-            <div className="mb-2 flex items-center justify-between">
-              <span className="text-[12px] text-[#64748B]">Estimated total</span>
+            <div className="mb-2 flex items-center justify-between gap-3">
+              <span className="text-[12px] text-[#64748B]">
+                Estimated total
+                {price.distanceMiles > 0 ? <span className="mt-0.5 block">{price.distanceMiles} mi pickup to drop-off</span> : null}
+              </span>
               <span className="text-[18px] font-semibold text-[#0F172A]">{formatMoney(price.total)}</span>
             </div>
             <Button disabled={step === 6 && gaps.length > 0} onClick={() => (step === 6 ? submit() : go(step + 1))}>
@@ -371,8 +399,79 @@ function StopForm({
   addresses: { id: string; label: string; line: string; placeId: string }[];
 }) {
   const [query, setQuery] = useState(stop.address);
-  const suggestions = searchPlaces(query);
+  const [remote, setRemote] = useState<AddressSuggestion[]>([]);
+  const [resolving, setResolving] = useState(false);
+  const local = searchPlaces(query);
   const outside = outOfArea(stop);
+
+  useEffect(() => {
+    setQuery(stop.address);
+  }, [stop.address]);
+
+  useEffect(() => {
+    const text = query.trim();
+    if (text.length < 3) {
+      setRemote([]);
+      return;
+    }
+    let cancelled = false;
+    const timer = setTimeout(() => {
+      suggestAddresses({ data: { query: text } }).then((result) => {
+        if (cancelled) return;
+        setRemote(result.suggestions);
+      });
+    }, 300);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [query]);
+
+  useEffect(() => {
+    const address = stop.address.trim();
+    if (address.length < 8 || stop.lat != null) return;
+    let cancelled = false;
+    const timer = setTimeout(() => {
+      setResolving(true);
+      geocodeAddress({ data: { address } })
+        .then((place) => {
+          if (cancelled || !place) return;
+          onChange({
+            address: place.label,
+            lat: place.lat,
+            lng: place.lng,
+            milesFromOrigin: milesFromOrigin(place.lat, place.lng),
+            facility: stop.facility || place.name,
+          });
+        })
+        .finally(() => {
+          if (!cancelled) setResolving(false);
+        });
+    }, 700);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [stop.address, stop.lat]);
+
+  const chooseSuggestion = (item: AddressSuggestion) => {
+    setResolving(true);
+    setRemote([]);
+    placeDetails({ data: { placeId: item.id } })
+      .then((place) => {
+        if (!place) return;
+        setQuery(place.label);
+        onChange({
+          address: place.label,
+          lat: place.lat,
+          lng: place.lng,
+          milesFromOrigin: milesFromOrigin(place.lat, place.lng),
+          facility: stop.facility || place.name,
+        });
+      })
+      .finally(() => setResolving(false));
+  };
+
   return (
     <div className="space-y-4">
       <ChoiceGroup>
@@ -388,36 +487,49 @@ function StopForm({
       <Field label={`${title} address`}>
         <TextInput
           value={query}
-          placeholder="Search street, city, or facility"
+          placeholder="Street, city, or ZIP"
           onChange={(event) => {
             setQuery(event.target.value);
             onChange({ address: event.target.value, lat: null, lng: null, milesFromOrigin: null });
           }}
         />
-        {suggestions.length > 0 && query.trim().length > 1 ? (
+        {resolving ? <p className="mt-1 text-[12px] text-[#64748B]">Checking this address…</p> : null}
+        {(remote.length > 0 || local.length > 0) && query.trim().length > 1 ? (
           <div className="mt-2 overflow-hidden rounded-[12px] border border-[#E2E8F0] bg-white">
-            {suggestions.map((place) => (
-              <button
-                key={place.id}
-                type="button"
-                className="block w-full px-3 py-3 text-left text-[14px] text-[#0F172A] active:bg-[#F6F7FB]"
-                onClick={() => {
-                  setQuery(place.label);
-                  onChange({
-                    address: place.label,
-                    facility: stop.facility || place.facility,
-                    milesFromOrigin: place.milesFromOrigin,
-                    lat: place.lat,
-                    lng: place.lng,
-                  });
-                }}
-              >
-                <span className="block font-medium">{place.facility}</span>
-                <span className="block text-[12px] text-[#64748B]">
-                  {place.label} · {place.milesFromOrigin} mi from Chesterfield
-                </span>
-              </button>
-            ))}
+            {remote.length > 0
+              ? remote.map((place) => (
+                  <button
+                    key={place.id}
+                    type="button"
+                    className="block w-full px-3 py-3 text-left text-[14px] text-[#0F172A] active:bg-[#F6F7FB]"
+                    onClick={() => chooseSuggestion(place)}
+                  >
+                    <span className="block font-medium">{place.main}</span>
+                    <span className="block text-[12px] text-[#64748B]">{place.label}</span>
+                  </button>
+                ))
+              : local.map((place) => (
+                  <button
+                    key={place.id}
+                    type="button"
+                    className="block w-full px-3 py-3 text-left text-[14px] text-[#0F172A] active:bg-[#F6F7FB]"
+                    onClick={() => {
+                      setQuery(place.label);
+                      onChange({
+                        address: place.label,
+                        facility: stop.facility || place.facility,
+                        milesFromOrigin: place.milesFromOrigin,
+                        lat: place.lat,
+                        lng: place.lng,
+                      });
+                    }}
+                  >
+                    <span className="block font-medium">{place.facility}</span>
+                    <span className="block text-[12px] text-[#64748B]">
+                      {place.label} · {place.milesFromOrigin} mi from Chesterfield
+                    </span>
+                  </button>
+                ))}
           </div>
         ) : null}
       </Field>
