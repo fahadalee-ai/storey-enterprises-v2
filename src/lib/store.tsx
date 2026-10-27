@@ -1,5 +1,6 @@
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { business } from "@/config/business";
+import { images } from "@/data/content";
 import { buildSeed } from "@/data/seed";
 import type {
   AppNotification,
@@ -12,8 +13,10 @@ import type {
   SavedAddress,
   SavedCard,
   Shipment,
+  ShipmentStatus,
   Stop,
   Thread,
+  TimelineEvent,
   UserProfile,
 } from "@/data/types";
 import { formatDateTimeET } from "@/lib/format";
@@ -21,6 +24,90 @@ import { draftPrice, round2, submitIntent } from "@/lib/pricing";
 import { clearSession, clearStorage, readSession, readStorage, writeSession, writeStorage } from "@/lib/storage";
 
 export type Toast = { id: number; title: string; body?: string };
+
+const COURIER = {
+  name: "Marcus Ellison",
+  phone: "(804) 555-0144",
+  vehicle: "2024 Ford Transit 250, white",
+  plate: "SE-4412",
+  photo: images.driver,
+};
+
+const LIVE_ORDER: ShipmentStatus[] = [
+  "booking_confirmed",
+  "driver_assigned",
+  "en_route_pickup",
+  "picked_up",
+  "in_transit",
+  "delivered",
+];
+
+const LIVE_LABEL: Record<string, string> = {
+  request_received: "Request received",
+  booking_confirmed: "Booking confirmed",
+  driver_assigned: "Courier assigned",
+  en_route_pickup: "En route to pickup",
+  picked_up: "Picked up",
+  in_transit: "In transit",
+  delivered: "Delivered",
+};
+
+const LIVE_NOTE: Record<string, string> = {
+  driver_assigned: "Marcus Ellison is assigned and preparing the van.",
+  en_route_pickup: "The courier is driving to the pickup.",
+  picked_up: "The package is secured with the courier.",
+  in_transit: "On the way to the drop-off.",
+  delivered: "Recipient confirmation is on the shipment.",
+};
+
+const LIVE_ETA: Partial<Record<ShipmentStatus, string>> = {
+  driver_assigned: "25 min",
+  en_route_pickup: "12 min",
+  picked_up: "28 min",
+  in_transit: "16 min",
+};
+
+function stepLive(item: Shipment, now: string): Shipment | null {
+  const index = LIVE_ORDER.indexOf(item.status);
+  if (index < 0 || index === LIVE_ORDER.length - 1) return null;
+  const next = LIVE_ORDER[index + 1];
+  const stamps = new Map(item.timeline.map((event) => [event.key, event.at]));
+  const keys = ["request_received", ...LIVE_ORDER];
+  const nextIndex = keys.indexOf(next);
+  const timeline: TimelineEvent[] = keys.map((key, step) => ({
+    key,
+    label: LIVE_LABEL[key] ?? key,
+    state: step < nextIndex ? "done" : step === nextIndex ? "current" : "upcoming",
+    at: step < nextIndex ? stamps.get(key) || item.createdAt : step === nextIndex ? now : undefined,
+    note: step === nextIndex ? LIVE_NOTE[key] : undefined,
+  }));
+  return {
+    ...item,
+    status: next,
+    eta: LIVE_ETA[next],
+    driver: next === "booking_confirmed" ? item.driver : item.driver ?? COURIER,
+    timeline,
+    custody:
+      next === "picked_up"
+        ? [...item.custody, { id: `c-${Date.now()}`, label: "Picked up", who: COURIER.name, at: now }]
+        : next === "delivered"
+          ? [...item.custody, { id: `c-${Date.now()}`, label: "Delivered", who: item.dropoff.contact || "Receiving desk", at: now }]
+          : item.custody,
+    pod:
+      next === "delivered"
+        ? {
+            recipient: item.dropoff.contact || "Receiving desk",
+            at: now,
+            hasSignature: true,
+            photo: images.proof,
+          }
+        : item.pod,
+    documents:
+      next === "delivered" && !item.documents.some((doc) => doc.id === "pod")
+        ? [...item.documents, { id: "pod", name: "Proof of delivery", kind: "image" }]
+        : item.documents,
+  };
+}
 
 type NotifyPrefs = Record<NotifyCategory, Record<NotifyChannel, boolean>>;
 
@@ -116,6 +203,7 @@ type Store = {
   startBooking: (serviceId?: string) => void;
   reorder: (shipmentId: string) => void;
   createShipment: (draft: BookingDraft) => Shipment;
+  advanceLiveShipment: (shipmentId: string) => void;
   acceptQuote: (shipmentId: string) => void;
   declineQuote: (shipmentId: string, reason: string) => void;
   payShipment: (shipmentId: string, method: string) => { ok: true; reference: string } | { ok: false; reason: string };
@@ -169,6 +257,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [focusField, setFocusField] = useState<string | null>(null);
   const [typingThread, setTypingThread] = useState<string | null>(null);
+  const liveTick = useRef<Record<string, number>>({});
+  const shipmentsRef = useRef(shipments);
+  shipmentsRef.current = shipments;
 
   const pushToast = (title: string, body?: string) => {
     const id = Date.now() + Math.random();
@@ -456,6 +547,50 @@ export function AppProvider({ children }: { children: ReactNode }) {
         ]);
         pushToast(intent === "book" ? "Booking confirmed" : "Request received", id);
         return created;
+      },
+      advanceLiveShipment: (shipmentId) => {
+        const nowMs = Date.now();
+        if (nowMs - (liveTick.current[shipmentId] ?? 0) < 5000) return;
+        const current = shipmentsRef.current.find((entry) => entry.id === shipmentId);
+        const now = new Date(nowMs).toISOString();
+        const update = current ? stepLive(current, now) : null;
+        if (!update) return;
+        liveTick.current[shipmentId] = nowMs;
+        setShipments((list) => list.map((entry) => (entry.id === shipmentId ? update : entry)));
+        const note = LIVE_NOTE[update.status] ?? update.status;
+        setNotifications((list) => [
+          {
+            id: `n-${nowMs}`,
+            type: update.status,
+            title: LIVE_LABEL[update.status] ?? "Shipment update",
+            body: `${update.id} · ${note}`,
+            at: now,
+            read: false,
+            target: { kind: "shipment", id: update.id },
+          },
+          ...list,
+        ]);
+        setThreads((list) =>
+          list.map((thread) =>
+            thread.shipmentId === update.id
+              ? {
+                  ...thread,
+                  unread: thread.unread + 1,
+                  messages: [
+                    ...thread.messages,
+                    {
+                      id: `m-${nowMs}`,
+                      from: "them" as const,
+                      text: `${LIVE_LABEL[update.status]}. ${note}`,
+                      at: now,
+                      status: "delivered" as const,
+                    },
+                  ],
+                }
+              : thread,
+          ),
+        );
+        pushToast(LIVE_LABEL[update.status] ?? "Shipment update", `${update.id} · ${note}`);
       },
       acceptQuote: (shipmentId) => {
         const now = new Date().toISOString();

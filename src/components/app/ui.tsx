@@ -271,7 +271,7 @@ export function Timeline({
               className={cn(
                 "mt-1 h-3 w-3 rounded-full border-2",
                 event.state === "done" && "border-[#003DF9] bg-[#003DF9]",
-                event.state === "current" && "border-[#003DF9] bg-white",
+                event.state === "current" && "border-[#003DF9] bg-[#003DF9] ring-4 ring-[#003DF9]/20",
                 event.state === "upcoming" && "border-[#E2E8F0] bg-white",
                 event.state === "alert" && "border-[#DC2626] bg-[#DC2626]",
               )}

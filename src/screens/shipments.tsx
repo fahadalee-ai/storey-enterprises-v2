@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { Filter, MapPin, MessageCircle, Phone, Search } from "lucide-react";
 import {
@@ -22,9 +22,9 @@ import {
 } from "@/components/app/ui";
 import { business } from "@/config/business";
 import { services } from "@/data/services";
-import type { Shipment } from "@/data/types";
+import type { Shipment, ShipmentStatus, Stop, TimelineEvent } from "@/data/types";
 import { formatDateET, formatDateTimeET, formatMoney } from "@/lib/format";
-import { CANCEL_REASONS, EXCEPTION_TYPES, SHIPMENT_TABS, matchesTab, type ShipmentTab } from "@/lib/labels";
+import { CANCEL_REASONS, EXCEPTION_TYPES, SHIPMENT_TABS, STATUS_LABEL, matchesTab, type ShipmentTab } from "@/lib/labels";
 import { DEADLINE_TIMES, slotsFor } from "@/lib/schedule";
 import { useApp } from "@/lib/store";
 import { cn } from "@/lib/utils";
@@ -122,9 +122,47 @@ function ShipmentCard({ shipment, onOpen }: { shipment: Shipment; onOpen: () => 
   );
 }
 
+const LIVE_STEPS: ShipmentStatus[] = [
+  "booking_confirmed",
+  "driver_assigned",
+  "en_route_pickup",
+  "picked_up",
+  "in_transit",
+  "delivered",
+];
+
+function stopText(stop: Stop) {
+  const line = [stop.facility, stop.address].map((part) => part.trim()).filter(Boolean).join(", ");
+  return line || "Not added";
+}
+
+function scheduleText(shipment: Shipment) {
+  const date = shipment.schedule.date;
+  const when = shipment.schedule.window || shipment.schedule.deadline;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || date < "2020-01-01") return when ? `${when} ET` : "Schedule not set";
+  return `${formatDateET(date, true)} · ${when || "Window open"} ET`;
+}
+
+function liveJourney(shipment: Shipment): TimelineEvent[] {
+  if (!LIVE_STEPS.includes(shipment.status)) return shipment.timeline;
+  const stamps = new Map(shipment.timeline.map((event) => [event.key, event]));
+  const keys = ["request_received", ...LIVE_STEPS];
+  const current = keys.indexOf(shipment.status);
+  return keys.map((key, index) => {
+    const saved = stamps.get(key);
+    return {
+      key,
+      label: saved?.label || STATUS_LABEL[key as ShipmentStatus] || key,
+      at: index < current ? saved?.at || shipment.createdAt : index === current ? saved?.at || shipment.createdAt : undefined,
+      state: index < current ? "done" : index === current ? "current" : "upcoming",
+      note: index === current ? saved?.note : undefined,
+    };
+  });
+}
+
 export function ShipmentDetailScreen({ id }: { id: string }) {
   const navigate = useNavigate();
-  const { shipments, cancelShipment, requestReschedule, reorder, refundEstimate, pushToast } = useApp();
+  const { shipments, cancelShipment, requestReschedule, reorder, refundEstimate, pushToast, advanceLiveShipment } = useApp();
   const shipment = shipments.find((item) => item.id === id);
   const [cancelOpen, setCancelOpen] = useState(false);
   const [reason, setReason] = useState(CANCEL_REASONS[0]);
@@ -134,7 +172,32 @@ export function ShipmentDetailScreen({ id }: { id: string }) {
   const [windowLabel, setWindowLabel] = useState("");
   const [doc, setDoc] = useState<string | null>(null);
   const [guide, setGuide] = useState(false);
+  const [notice, setNotice] = useState("");
+  const seenStatus = useRef(shipment?.status);
+  const advanceRef = useRef(advanceLiveShipment);
+  advanceRef.current = advanceLiveShipment;
   const service = services.find((item) => item.id === shipment?.serviceId);
+  const live = shipment ? LIVE_STEPS.includes(shipment.status) && shipment.status !== "delivered" : false;
+
+  useEffect(() => {
+    if (!live) return;
+    const timer = window.setInterval(() => advanceRef.current(id), 8000);
+    return () => window.clearInterval(timer);
+  }, [id, live]);
+
+  useEffect(() => {
+    if (!shipment) return;
+    if (seenStatus.current && seenStatus.current !== shipment.status) {
+      setNotice(STATUS_LABEL[shipment.status]);
+    }
+    seenStatus.current = shipment.status;
+  }, [shipment]);
+
+  useEffect(() => {
+    if (!notice) return;
+    const timer = window.setTimeout(() => setNotice(""), 4200);
+    return () => window.clearTimeout(timer);
+  }, [notice]);
 
   if (!shipment) {
     return (
@@ -153,51 +216,92 @@ export function ShipmentDetailScreen({ id }: { id: string }) {
       <StackHeader title={shipment.id} backTo="/shipments" />
       <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-8">
         <AsyncBody boot emptyTitle="Shipment hidden" emptyBody="Turn preview states back to live data.">
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <StatusChip status={shipment.status} label={shipment.exception ?? undefined} />
-              <button type="button" className="text-[12px] font-semibold text-[#003DF9]" onClick={() => setGuide(true)}>
-                Status guide
+          <div className="space-y-3">
+            {notice ? (
+              <button type="button" onClick={() => navigate({ to: "/notifications" })} className="flex w-full items-start gap-3 rounded-[18px] bg-[#003DF9] px-4 py-3 text-left text-white shadow-[0_8px_20px_rgba(0,61,249,.28)]">
+                <span className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-white" />
+                <span>
+                  <span className="block text-[12px] font-semibold uppercase tracking-wide text-white/75">New notification</span>
+                  <span className="block text-[15px] font-semibold">{notice}</span>
+                  <span className="block text-[12px] text-white/80">{shipment.id} just updated</span>
+                </span>
               </button>
-            </div>
+            ) : null}
+            <section className="overflow-hidden rounded-[22px] bg-[#070B14] text-white">
+              <div className="flex items-center justify-between px-4 pt-4">
+                <span className="flex items-center gap-2 text-[12px] font-semibold">
+                  <span className="relative flex h-2.5 w-2.5">
+                    {live ? <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#22C55E] opacity-70" /> : null}
+                    <span className={cn("relative h-2.5 w-2.5 rounded-full", live ? "bg-[#22C55E]" : "bg-white/50")} />
+                  </span>
+                  {live ? "Live" : shipment.status === "delivered" ? "Completed" : "Updates paused"}
+                </span>
+                <button type="button" className="min-h-11 text-[12px] font-semibold text-white/80" onClick={() => setGuide(true)}>
+                  Status guide
+                </button>
+              </div>
+              <div className="px-4 pb-2 pt-1">
+                <h2 className="text-[26px] font-semibold leading-tight">{shipment.exception || STATUS_LABEL[shipment.status]}</h2>
+                <p className="mt-1 text-[14px] text-white/70">
+                  {shipment.eta ? `ETA ${shipment.eta} · Eastern Time (ET)` : live ? "Status moves forward on its own" : scheduleText(shipment)}
+                </p>
+              </div>
+              <div className="flex gap-1 px-4 pb-4">
+                {LIVE_STEPS.map((step) => {
+                  const index = LIVE_STEPS.indexOf(shipment.status);
+                  const stepIndex = LIVE_STEPS.indexOf(step);
+                  const on = index >= 0 && stepIndex <= index;
+                  return <span key={step} className={cn("h-1.5 flex-1 rounded-full", on ? "bg-[#003DF9]" : "bg-white/15")} />;
+                })}
+              </div>
+            </section>
             {shipment.reschedule ? (
               <p className="rounded-[12px] bg-[#003DF9]/10 px-3 py-2 text-[13px] text-[#003DF9]">
                 Reschedule requested for {formatDateET(shipment.reschedule.date)} · {shipment.reschedule.window} ET. Pending confirmation.
               </p>
             ) : null}
             <RouteMap pickup={shipment.pickup} dropoff={shipment.dropoff} driver={!!shipment.driver && ["en_route_pickup", "picked_up", "in_transit", "exception"].includes(shipment.status)} distance={shipment.price.distanceMiles} />
-            {shipment.eta ? <p className="text-[14px] font-semibold text-[#0F172A]">ETA {shipment.eta} · Eastern Time (ET)</p> : null}
             {shipment.driver ? (
               <section className={cn(cardClass(), "flex items-center gap-3 p-3")}>
                 <img src={shipment.driver.photo} alt="" className="h-14 w-14 rounded-full object-cover" />
                 <div className="min-w-0 flex-1">
+                  <p className="text-[12px] font-semibold uppercase tracking-wide text-[#64748B]">Your courier</p>
                   <p className="text-[16px] font-semibold">{shipment.driver.name}</p>
-                  <p className="text-[12px] text-[#64748B]">{shipment.driver.vehicle}</p>
-                  <p className="text-[12px] text-[#64748B]">{shipment.driver.plate}</p>
+                  <p className="text-[12px] text-[#64748B]">{shipment.driver.vehicle} · {shipment.driver.plate}</p>
                 </div>
                 <a aria-label="Call courier" href={`tel:${shipment.driver.phone}`} className="flex h-11 w-11 items-center justify-center rounded-full bg-[#003DF9]/10 text-[#003DF9]">
                   <Phone className="h-5 w-5" strokeWidth={1.75} />
                 </a>
-                <button type="button" aria-label="Message courier" className="flex h-11 w-11 items-center justify-center rounded-full bg-[#003DF9]/10 text-[#003DF9]" onClick={() => navigate({ to: "/messages/$id", params: { id: shipment.id === "SE-2026-000184" ? "t-184" : `t-${shipment.id}` } })}>
+                <button type="button" aria-label="Message courier" className="flex h-11 w-11 items-center justify-center rounded-full bg-[#003DF9] text-white" onClick={() => navigate({ to: "/messages/$id", params: { id: shipment.id === "SE-2026-000184" ? "t-184" : `t-${shipment.id}` } })}>
                   <MessageCircle className="h-5 w-5" strokeWidth={1.75} />
                 </button>
               </section>
-            ) : null}
+            ) : (
+              <section className={cn(cardClass(), "p-4")}>
+                <p className="text-[14px] font-semibold text-[#0F172A]">Courier not assigned yet</p>
+                <p className="mt-1 text-[13px] text-[#64748B]">You’ll get a notification when a courier is on this shipment.</p>
+              </section>
+            )}
             <section className={cn(cardClass(), "p-4")}>
-              <h2 className="text-[16px] font-semibold">Status timeline</h2>
+              <div className="flex items-center justify-between">
+                <h2 className="text-[16px] font-semibold">Status timeline</h2>
+                {live ? <span className="text-[12px] font-semibold text-[#003DF9]">Updating</span> : null}
+              </div>
               <div className="mt-3">
-                <Timeline events={shipment.timeline.map((event) => ({ ...event, at: event.at ? formatDateTimeET(event.at) : undefined }))} />
+                <Timeline events={liveJourney(shipment).map((event) => ({ ...event, at: event.at ? formatDateTimeET(event.at) : undefined }))} />
               </div>
             </section>
-            <section className={cn(cardClass(), "space-y-2 p-4 text-[14px]")}>
+            <section className={cn(cardClass(), "space-y-3 p-4 text-[14px]")}>
               <h2 className="text-[16px] font-semibold">Shipment</h2>
-              <p>{service?.title}</p>
-              <p className="text-[#64748B]">{shipment.details.type} · {shipment.details.quantity} × {shipment.details.boxSize} · {shipment.details.weightLbs} lbs</p>
-              <p className="text-[#64748B]">{shipment.details.temperature} · {shipment.details.handling.join(", ") || "Standard handling"}</p>
-              <p>{shipment.details.description}</p>
-              <p className="flex items-start gap-2"><MapPin className="mt-0.5 h-4 w-4 text-[#003DF9]" strokeWidth={1.75} /> {shipment.pickup.facility}, {shipment.pickup.address}</p>
-              <p className="flex items-start gap-2"><MapPin className="mt-0.5 h-4 w-4 text-[#CF0300]" strokeWidth={1.75} /> {shipment.dropoff.facility}, {shipment.dropoff.address}</p>
-              <p className="text-[#64748B]">{formatDateET(shipment.schedule.date, true)} · {shipment.schedule.window || shipment.schedule.deadline} ET</p>
+              <p className="font-medium text-[#0F172A]">{service?.displayName || service?.title || "Medical courier"}</p>
+              <p className="text-[#64748B]">
+                {[shipment.details.type, shipment.details.boxSize ? `${shipment.details.quantity} × ${shipment.details.boxSize}` : "", shipment.details.weightLbs ? `${shipment.details.weightLbs} lbs` : ""].filter(Boolean).join(" · ") || "Package details not added"}
+              </p>
+              <p className="text-[#64748B]">{[shipment.details.temperature, shipment.details.handling.join(", ")].filter(Boolean).join(" · ") || "Standard handling"}</p>
+              {shipment.details.description ? <p>{shipment.details.description}</p> : null}
+              <p className="flex items-start gap-2"><MapPin className="mt-0.5 h-4 w-4 shrink-0 text-[#003DF9]" strokeWidth={1.75} /> Pickup · {stopText(shipment.pickup)}</p>
+              <p className="flex items-start gap-2"><MapPin className="mt-0.5 h-4 w-4 shrink-0 text-[#CF0300]" strokeWidth={1.75} /> Drop-off · {stopText(shipment.dropoff)}</p>
+              <p className="text-[#64748B]">{scheduleText(shipment)}</p>
             </section>
             {shipment.custody.length ? (
               <section className={cn(cardClass(), "p-4")}>
