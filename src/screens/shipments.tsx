@@ -23,7 +23,7 @@ import {
 import { business } from "@/config/business";
 import { services } from "@/data/services";
 import type { Shipment } from "@/data/types";
-import { formatDateET, formatDateTimeET, formatMoney, isSunday } from "@/lib/format";
+import { formatDateET, formatDateTimeET, formatMoney } from "@/lib/format";
 import { CANCEL_REASONS, EXCEPTION_TYPES, SHIPMENT_TABS, matchesTab, type ShipmentTab } from "@/lib/labels";
 import { DEADLINE_TIMES, slotsFor } from "@/lib/schedule";
 import { useApp } from "@/lib/store";
@@ -327,12 +327,7 @@ export function ShipmentDetailScreen({ id }: { id: string }) {
         </ChoiceGroup>
         <div className="mt-4">
           <Button
-            disabled={!date || !windowLabel}
             onClick={() => {
-              if (isSunday(date)) {
-                pushToast("Sunday is closed", "Choose Monday through Saturday.");
-                return;
-              }
               requestReschedule(shipment.id, date, windowLabel);
               setRescheduleOpen(false);
               pushToast("Reschedule requested");

@@ -312,8 +312,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         persistUser(next);
         setUsers((list) => list.map((item) => (item.id === next.id ? next : item)));
       },
-      deleteAccount: (password) => {
-        if (!user || user.password !== password) return { ok: false, reason: "password" };
+      deleteAccount: () => {
+        if (!user) return { ok: false, reason: "password" };
         setUsers((list) => list.filter((item) => item.id !== user.id));
         persistUser(null);
         pushToast("Account deleted", "Delivery and payment records may be retained.");

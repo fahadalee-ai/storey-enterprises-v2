@@ -22,59 +22,18 @@ import { boxSizes, handlingOptions, shipmentTypes, temperatureOptions, weightRan
 import { placeById, placeFromAddress, searchPlaces } from "@/data/places";
 import { services } from "@/data/services";
 import type { BookingDraft, Shipment, Stop } from "@/data/types";
-import { digits, formatDateET, formatMoney, formatPhone, isSaturday, isSunday, todayET } from "@/lib/format";
-import { gapRoute, profileGaps } from "@/lib/labels";
+import { formatDateET, formatMoney, formatPhone, isSaturday, isSunday, todayET } from "@/lib/format";
 import { drivingDistance, geocodeAddress, placeDetails, suggestAddresses, type AddressSuggestion } from "@/lib/maps";
 import { DELIVERY_TYPES, draftMiles, draftPrice, intentLabel, milesFromOrigin, outOfArea, submitIntent, weightRangeFor } from "@/lib/pricing";
-import { DEADLINE_TIMES, alternativeSlots, isHoliday, isPastDate, monthMatrix, slotLostOnSubmit, slotState, slotsFor } from "@/lib/schedule";
+import { DEADLINE_TIMES, isHoliday, monthMatrix, slotState, slotsFor } from "@/lib/schedule";
 import { useApp } from "@/lib/store";
 import { cn } from "@/lib/utils";
 
 const TITLES = ["", "Service and delivery type", "Pickup details", "Drop-off details", "Shipment details", "Schedule", "Review and price", "Confirmation"];
 
-function validate(step: number, draft: BookingDraft) {
-  const errors: Record<string, string> = {};
-  if (step === 1 && !draft.deliveryType) errors.deliveryType = "Choose a delivery type.";
-  if (step === 2 || step === 3) {
-    const stop = step === 2 ? draft.pickup : draft.dropoff;
-    const key = step === 2 ? "pickup" : "drop";
-    if (!stop.facility.trim()) errors[`${key}Facility`] = "Facility or business name is required.";
-    if (!stop.contact.trim()) errors[`${key}Contact`] = "Contact name is required.";
-    if (digits(stop.phone).length !== 10) errors[`${key}Phone`] = "Enter a 10-digit phone number.";
-  }
-  if (step === 4) {
-    const details = draft.details;
-    if (!details.type) errors.type = "Choose a shipment type.";
-    if (details.quantity < 1) errors.quantity = "Add at least 1 box.";
-    if (!details.boxSize) errors.boxSize = "Choose a box size.";
-    if (details.boxSize === "Custom" && (!Number(details.length) || !Number(details.width) || !Number(details.height))) {
-      errors.custom = "Enter length, width, and height in inches.";
-    }
-    if (!details.weight || Number(details.weight) <= 0) errors.weight = "Enter the weight in pounds.";
-    if (!details.weightRange) errors.weightRange = "Choose a weight range.";
-    if (!details.description.trim()) errors.description = "Describe the shipment.";
-    if (!details.temperature) errors.temperature = "Choose a temperature requirement.";
-    if (details.temperature === "Other" && !details.temperatureOther.trim()) errors.temperatureOther = "Describe the temperature requirement.";
-  }
-  if (step === 5) {
-    if (!draft.schedule.date) errors.date = "Choose a date.";
-    else if (isPastDate(draft.schedule.date)) errors.date = "Past dates are closed.";
-    else if (isSunday(draft.schedule.date)) errors.date = "Sunday is closed.";
-    const urgent = draft.deliveryType === "stat" || draft.deliveryType === "after-hours";
-    if (urgent && !draft.schedule.deadline) errors.deadline = "Choose a requested delivery deadline.";
-    if (!urgent && !draft.schedule.window) errors.window = "Choose a delivery window.";
-    if (!urgent && draft.schedule.date && draft.schedule.window && slotState(draft.schedule.date, draft.schedule.window) !== "open") {
-      errors.window = "That window is no longer open.";
-    }
-  }
-  return errors;
-}
-
 export function BookingScreen() {
   const navigate = useNavigate();
-  const { draft, setDraft, user, createShipment, setFocusField, pushToast } = useApp();
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const [slotError, setSlotError] = useState(false);
+  const { draft, setDraft, user, createShipment, pushToast } = useApp();
   const [done, setDone] = useState<Shipment | null>(null);
   const [priorityInfo, setPriorityInfo] = useState(false);
   const [legal, setLegal] = useState<"terms" | "privacy" | null>(null);
@@ -84,7 +43,6 @@ export function BookingScreen() {
   const step = done ? 7 : draft.step;
   const price = useMemo(() => draftPrice(draft), [draft]);
   const intent = submitIntent(draft);
-  const gaps = profileGaps(user);
   const urgent = draft.deliveryType === "stat" || draft.deliveryType === "after-hours";
 
   const patchStop = (target: "pickup" | "dropoff", patch: Partial<Stop>) => {
@@ -116,27 +74,10 @@ export function BookingScreen() {
   }, [draft.pickup.lat, draft.pickup.lng, draft.dropoff.lat, draft.dropoff.lng]);
 
   const go = (next: number) => {
-    if (next > step) {
-      const found = validate(step, draft);
-      setErrors(found);
-      if (Object.keys(found).length) return;
-    }
-    setSlotError(false);
     setDraft({ step: next });
   };
 
   const submit = () => {
-    const found = validate(5, draft);
-    if (Object.keys(found).length) {
-      setErrors(found);
-      setDraft({ step: 5 });
-      return;
-    }
-    if (!urgent && slotLostOnSubmit(draft.schedule.date, draft.schedule.window)) {
-      setSlotError(true);
-      return;
-    }
-    if (gaps.length) return;
     setDone(createShipment(draft));
   };
 
@@ -171,13 +112,12 @@ export function BookingScreen() {
             <h1 className="px-2 pt-3 text-[22px] font-semibold text-[#0F172A]">{TITLES[step]}</h1>
           </header>
           <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
-            {step === 1 ? <StepService draft={draft} setDraft={setDraft} errors={errors} onInfo={() => setPriorityInfo(true)} /> : null}
+            {step === 1 ? <StepService draft={draft} setDraft={setDraft} onInfo={() => setPriorityInfo(true)} /> : null}
             {step === 2 ? (
               <StopForm
                 target="pickup"
                 title="Pickup"
                 stop={draft.pickup}
-                errors={errors}
                 onChange={(patch) => patchStop("pickup", patch)}
                 onProfile={() => setConfirmProfile("pickup")}
                 onSaved={(placeId, label) => setConfirmSaved({ target: "pickup", placeId, label })}
@@ -190,7 +130,6 @@ export function BookingScreen() {
                   target="drop"
                   title="Drop-off"
                   stop={draft.dropoff}
-                  errors={errors}
                   onChange={(patch) => patchStop("dropoff", patch)}
                   onProfile={() => setConfirmProfile("dropoff")}
                   onSaved={(placeId, label) => setConfirmSaved({ target: "dropoff", placeId, label })}
@@ -201,30 +140,14 @@ export function BookingScreen() {
                 </div>
               </>
             ) : null}
-            {step === 4 ? <StepShipment draft={draft} setDraft={setDraft} errors={errors} pushToast={pushToast} /> : null}
-            {step === 5 ? <StepSchedule draft={draft} setDraft={setDraft} errors={errors} urgent={urgent} /> : null}
+            {step === 4 ? <StepShipment draft={draft} setDraft={setDraft} pushToast={pushToast} /> : null}
+            {step === 5 ? <StepSchedule draft={draft} setDraft={setDraft} urgent={urgent} /> : null}
             {step === 6 ? (
               <StepReview
                 draft={draft}
-                priceMiles={price.distanceMiles}
-                slotError={slotError}
-                gaps={gaps}
-                onEdit={(next) => {
-                  setSlotError(false);
-                  setDraft({ step: next });
-                }}
-                onPickSlot={(window) => {
-                  setDraft((current) => ({ ...current, schedule: { ...current.schedule, window } }));
-                  setSlotError(false);
-                }}
+                onEdit={(next) => setDraft({ step: next })}
                 onMode={(priceMode) => setDraft({ priceMode })}
                 onTerms={() => setLegal("terms")}
-                onComplete={() => {
-                  const gap = gaps[0];
-                  if (!gap) return;
-                  setFocusField(gap);
-                  navigate({ to: gapRoute(gap) });
-                }}
               />
             ) : null}
           </div>
@@ -236,7 +159,7 @@ export function BookingScreen() {
               </span>
               <span className="text-[18px] font-semibold text-[#0F172A]">{formatMoney(price.total)}</span>
             </div>
-            <Button disabled={step === 6 && gaps.length > 0} onClick={() => (step === 6 ? submit() : go(step + 1))}>
+            <Button onClick={() => (step === 6 ? submit() : go(step + 1))}>
               {step === 6 ? intentLabel(intent) : "Continue"}
             </Button>
           </div>
@@ -260,14 +183,13 @@ export function BookingScreen() {
         <p className="mt-3 rounded-[12px] bg-[#F6F7FB] p-3 text-[14px] text-[#0F172A]">{user?.billingAddress || "No billing address on the profile yet."}</p>
         <div className="mt-4 space-y-2">
           <Button
-            disabled={!user?.billingAddress}
             onClick={() => {
-              if (!confirmProfile || !user?.billingAddress) return;
-              const place = placeFromAddress(user.billingAddress);
+              if (!confirmProfile) return;
+              const place = placeFromAddress(user?.billingAddress ?? "");
               if (!place) {
-                patchStop(confirmProfile, { address: user.billingAddress, facility: user.companyName, lat: null, lng: null, milesFromOrigin: null });
+                patchStop(confirmProfile, { address: user?.billingAddress ?? "", facility: user?.companyName ?? "", lat: null, lng: null, milesFromOrigin: null });
               } else {
-                applyPlace(confirmProfile, place.id, { facility: user.companyName || place.facility, contact: user.fullName, phone: user.phone });
+                applyPlace(confirmProfile, place.id, { facility: user?.companyName || place.facility, contact: user?.fullName, phone: user?.phone });
               }
               setConfirmProfile(null);
             }}
@@ -305,17 +227,15 @@ export function BookingScreen() {
 function StepService({
   draft,
   setDraft,
-  errors,
   onInfo,
 }: {
   draft: BookingDraft;
   setDraft: (patch: Partial<BookingDraft> | ((draft: BookingDraft) => BookingDraft)) => void;
-  errors: Record<string, string>;
   onInfo: () => void;
 }) {
   return (
     <div className="space-y-4">
-      <Field label="Service" required>
+      <Field label="Service">
         <div className="space-y-2">
           {services.map((service) => (
             <button
@@ -330,7 +250,7 @@ function StepService({
           ))}
         </div>
       </Field>
-      <Field label="Delivery type" required error={errors.deliveryType}>
+      <Field label="Delivery type">
         <div className="space-y-2">
           {DELIVERY_TYPES.map((type) => (
             <button
@@ -383,7 +303,6 @@ function StopForm({
   target,
   title,
   stop,
-  errors,
   onChange,
   onProfile,
   onSaved,
@@ -392,7 +311,6 @@ function StopForm({
   target: "pickup" | "drop";
   title: string;
   stop: Stop;
-  errors: Record<string, string>;
   onChange: (patch: Partial<Stop>) => void;
   onProfile: () => void;
   onSaved: (placeId: string, label: string) => void;
@@ -538,14 +456,14 @@ function StopForm({
           This location is outside our standard service area. You can still submit a request for review.
         </p>
       ) : null}
-      <Field label="Facility/Business name" required error={errors[`${target}Facility`]}>
-        <TextInput value={stop.facility} invalid={!!errors[`${target}Facility`]} onChange={(event) => onChange({ facility: event.target.value })} />
+      <Field label="Facility/Business name">
+        <TextInput value={stop.facility} onChange={(event) => onChange({ facility: event.target.value })} />
       </Field>
-      <Field label={target === "pickup" ? "Contact person" : "Recipient/Contact name"} required error={errors[`${target}Contact`]}>
-        <TextInput value={stop.contact} invalid={!!errors[`${target}Contact`]} onChange={(event) => onChange({ contact: event.target.value })} />
+      <Field label={target === "pickup" ? "Contact person" : "Recipient/Contact name"}>
+        <TextInput value={stop.contact} onChange={(event) => onChange({ contact: event.target.value })} />
       </Field>
-      <Field label="Contact phone" required error={errors[`${target}Phone`]}>
-        <TextInput inputMode="tel" value={stop.phone} invalid={!!errors[`${target}Phone`]} onChange={(event) => onChange({ phone: formatPhone(event.target.value) })} />
+      <Field label="Contact phone">
+        <TextInput inputMode="tel" value={stop.phone} onChange={(event) => onChange({ phone: formatPhone(event.target.value) })} />
       </Field>
       <Field label={target === "pickup" ? "Floor/Suite/Access instructions" : "Access/receiving instructions"}>
         <TextInput value={stop.access} onChange={(event) => onChange({ access: event.target.value })} />
@@ -560,12 +478,10 @@ function StopForm({
 function StepShipment({
   draft,
   setDraft,
-  errors,
   pushToast,
 }: {
   draft: BookingDraft;
   setDraft: (patch: Partial<BookingDraft> | ((draft: BookingDraft) => BookingDraft)) => void;
-  errors: Record<string, string>;
   pushToast: (title: string, body?: string) => void;
 }) {
   const details = draft.details;
@@ -588,7 +504,7 @@ function StepShipment({
   };
   return (
     <div className="space-y-3">
-      <Field label="Shipment type" required error={errors.type}>
+      <Field label="Shipment type">
         <ChoiceGroup className="grid-cols-2">
           {shipmentTypes.map((type) => (
             <ChoiceButton key={type} selected={details.type === type} onClick={() => setDetails({ type })} className="h-full px-2 text-[13px]">
@@ -598,7 +514,7 @@ function StepShipment({
         </ChoiceGroup>
       </Field>
       <div className="grid grid-cols-2 gap-3">
-        <Field label="Box quantity" required error={errors.quantity}>
+        <Field label="Box quantity">
           <div className="flex h-12 items-center justify-between rounded-[12px] border border-[#E2E8F0] bg-white px-1">
             <button type="button" aria-label="Decrease quantity" className="flex h-11 w-11 items-center justify-center rounded-full" onClick={() => setDetails({ quantity: Math.max(1, details.quantity - 1) })}>
               <Minus className="h-5 w-5" strokeWidth={1.75} />
@@ -613,7 +529,7 @@ function StepShipment({
           <TextInput inputMode="decimal" value={details.declaredValue} onChange={(event) => setDetails({ declaredValue: event.target.value })} placeholder="Optional" />
         </Field>
       </div>
-      <Field label="Box size" required error={errors.boxSize || errors.custom}>
+      <Field label="Box size">
         <ChoiceGroup className="grid-cols-2">
           {boxSizes.map((size) => (
             <ChoiceButton key={size.id} align="start" selected={details.boxSize === size.id} onClick={() => setDetails({ boxSize: size.id })} className="h-full py-2">
@@ -626,17 +542,16 @@ function StepShipment({
       {details.boxSize === "Custom" ? (
         <div className="grid grid-cols-3 gap-2">
           {(["length", "width", "height"] as const).map((key) => (
-            <Field key={key} label={key === "length" ? "L (in)" : key === "width" ? "W (in)" : "H (in)"} required>
+            <Field key={key} label={key === "length" ? "L (in)" : key === "width" ? "W (in)" : "H (in)"}>
               <TextInput inputMode="decimal" value={details[key]} onChange={(event) => setDetails({ [key]: event.target.value })} />
             </Field>
           ))}
         </div>
       ) : null}
-      <Field label="Weight (lbs)" required error={errors.weight}>
+      <Field label="Weight (lbs)">
         <TextInput
           inputMode="decimal"
           value={details.weight}
-          invalid={!!errors.weight}
           onChange={(event) => {
             const weight = event.target.value;
             const numeric = Number(weight);
@@ -644,7 +559,7 @@ function StepShipment({
           }}
         />
       </Field>
-      <Field label="Weight range (lbs)" required error={errors.weightRange}>
+      <Field label="Weight range (lbs)">
         <ChoiceGroup className="grid-cols-4">
           {weightRanges.map((range) => (
             <ChoiceButton key={range} selected={details.weightRange === range} onClick={() => setDetails({ weightRange: range })} className="h-full px-1 text-[13px]">
@@ -653,8 +568,8 @@ function StepShipment({
           ))}
         </ChoiceGroup>
       </Field>
-      <Field label="Shipment description" required error={errors.description}>
-        <TextArea rows={2} className="min-h-16" value={details.description} invalid={!!errors.description} onChange={(event) => setDetails({ description: event.target.value })} />
+      <Field label="Shipment description">
+        <TextArea rows={2} className="min-h-16" value={details.description} onChange={(event) => setDetails({ description: event.target.value })} />
       </Field>
       <Field label="Handling instructions">
         <ChoiceGroup className="grid-cols-2">
@@ -668,7 +583,7 @@ function StepShipment({
           })}
         </ChoiceGroup>
       </Field>
-      <Field label="Temperature requirement" required error={errors.temperature}>
+      <Field label="Temperature requirement">
         <ChoiceGroup className="grid-cols-2">
           {temperatureOptions.map((option) => (
             <ChoiceButton key={option} selected={details.temperature === option} onClick={() => setDetails({ temperature: option })} className="h-full px-2 text-[13px]">
@@ -678,8 +593,8 @@ function StepShipment({
         </ChoiceGroup>
       </Field>
       {details.temperature === "Other" ? (
-        <Field label="Other temperature" required error={errors.temperatureOther}>
-          <TextInput value={details.temperatureOther} invalid={!!errors.temperatureOther} onChange={(event) => setDetails({ temperatureOther: event.target.value })} />
+        <Field label="Other temperature">
+          <TextInput value={details.temperatureOther} onChange={(event) => setDetails({ temperatureOther: event.target.value })} />
         </Field>
       ) : null}
       <Field label="Item photos" hint="Optional, up to 5">
@@ -713,12 +628,10 @@ function StepShipment({
 function StepSchedule({
   draft,
   setDraft,
-  errors,
   urgent,
 }: {
   draft: BookingDraft;
   setDraft: (patch: Partial<BookingDraft> | ((draft: BookingDraft) => BookingDraft)) => void;
-  errors: Record<string, string>;
   urgent: boolean;
 }) {
   const today = todayET();
@@ -753,15 +666,13 @@ function StepSchedule({
           ))}
           {cells.map((date, index) => {
             if (!date) return <span key={`e-${index}`} />;
-            const disabled = isPastDate(date) || isSunday(date);
             const selected = draft.schedule.date === date;
             return (
               <button
                 key={date}
                 type="button"
-                disabled={disabled}
                 onClick={() => setDraft((current) => ({ ...current, schedule: { ...current.schedule, date, window: "" } }))}
-                className={cn("h-11 rounded-[10px] text-[14px]", selected && "bg-[#003DF9] text-white", !selected && !disabled && "bg-[#F6F7FB]", disabled && "text-[#CBD5E1]")}
+                className={cn("h-11 rounded-[10px] text-[14px]", selected ? "bg-[#003DF9] text-white" : "bg-[#F6F7FB]", isSunday(date) && !selected && "text-[#CF0300]")}
               >
                 {Number(date.slice(-2))}
                 {isHoliday(date) ? <span className="block text-[9px] leading-none">Hol</span> : null}
@@ -770,11 +681,10 @@ function StepSchedule({
           })}
         </div>
       </div>
-      {errors.date ? <p className="text-[12px] text-[#DC2626]">{errors.date}</p> : null}
       {holiday ? <p className="text-[12px] text-[#92400E]">{business.holidayNames[draft.schedule.date]} is a holiday. A holiday surcharge may apply.</p> : null}
       {draft.schedule.date && isSaturday(draft.schedule.date) ? <p className="text-[12px] text-[#64748B]">Saturday windows end at 5:00 PM ET.</p> : null}
       {urgent ? (
-        <Field label="Requested delivery deadline" required error={errors.deadline} hint="Availability is confirmed by our team.">
+        <Field label="Requested delivery deadline" hint="Availability is confirmed by our team.">
           <select className={inputClass} value={draft.schedule.deadline} onChange={(event) => setDraft((current) => ({ ...current, schedule: { ...current.schedule, deadline: event.target.value, window: "" } }))}>
             <option value="">Select a time</option>
             {DEADLINE_TIMES.map((time) => (
@@ -785,7 +695,7 @@ function StepSchedule({
           </select>
         </Field>
       ) : (
-        <Field label="Delivery window" required error={errors.window}>
+        <Field label="Delivery window">
           <ChoiceGroup>
             {slots.map((slot) => {
               const state = slotState(draft.schedule.date, slot);
@@ -794,8 +704,7 @@ function StepSchedule({
                 <ChoiceButton
                   key={slot}
                   align="start"
-                  selected={selected && state === "open"}
-                  disabled={state !== "open"}
+                  selected={selected}
                   onClick={() => setDraft((current) => ({ ...current, schedule: { ...current.schedule, window: slot } }))}
                 >
                   <span className="flex items-center gap-2">
@@ -825,22 +734,13 @@ function StepSchedule({
 function StepReview({
   draft,
   onEdit,
-  slotError,
-  gaps,
-  onPickSlot,
   onMode,
   onTerms,
-  onComplete,
 }: {
   draft: BookingDraft;
-  priceMiles: number;
   onEdit: (step: number) => void;
-  slotError: boolean;
-  gaps: string[];
-  onPickSlot: (window: string) => void;
   onMode: (mode: BookingDraft["priceMode"]) => void;
   onTerms: () => void;
-  onComplete: () => void;
 }) {
   const service = services.find((item) => item.id === draft.serviceId);
   const price = draftPrice(draft);
@@ -853,27 +753,6 @@ function StepReview({
   ];
   return (
     <div className="space-y-3">
-      {gaps[0] ? (
-        <div className="rounded-[16px] bg-[#F59E0B]/15 p-3">
-          <p className="text-[14px] font-semibold text-[#92400E]">{gaps[0]} is required</p>
-          <button type="button" className="mt-2 min-h-11 text-[14px] font-semibold text-[#003DF9]" onClick={onComplete}>
-            Complete Now
-          </button>
-        </div>
-      ) : null}
-      {slotError ? (
-        <div className="rounded-[16px] border border-[#DC2626]/30 bg-white p-3">
-          <p className="text-[14px] font-semibold text-[#DC2626]">Slot no longer available</p>
-          <p className="mt-1 text-[13px] text-[#475569]">Choose another Eastern Time window.</p>
-          <ChoiceGroup className="mt-2">
-            {alternativeSlots(draft.schedule.date, draft.schedule.window).map((slot) => (
-              <ChoiceButton key={slot} align="start" onClick={() => onPickSlot(slot)}>
-                {slot}
-              </ChoiceButton>
-            ))}
-          </ChoiceGroup>
-        </div>
-      ) : null}
       {cards.map((card) => (
         <section key={card.title} className="rounded-[16px] bg-white p-3 shadow-[0_4px_16px_rgba(15,23,42,.06)]">
           <div className="flex items-start justify-between gap-2">

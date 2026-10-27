@@ -92,7 +92,6 @@ export function PaymentScreen({ id }: { id: string }) {
   const [phase, setPhase] = useState<"form" | "processing" | "success" | "failure">("form");
   const [reference, setReference] = useState("");
   const [failure, setFailure] = useState("");
-  const [errors, setErrors] = useState<Record<string, string>>({});
 
   if (!shipment) {
     return (
@@ -118,18 +117,11 @@ export function PaymentScreen({ id }: { id: string }) {
   };
 
   const saveCard = () => {
-    const next: Record<string, string> = {};
-    if (card.name.trim().length < 2) next.name = "Name on card is required.";
     const digits = card.number.replace(/\D/g, "");
-    if (digits.length < 15) next.number = "Enter a card number.";
-    if (!/^\d{2}\/\d{2}$/.test(card.exp)) next.exp = "Use MM/YY.";
-    if (card.cvv.length < 3) next.cvv = "Enter the CVV.";
-    if (card.zip.length < 5) next.zip = "Enter a ZIP code.";
-    setErrors(next);
-    if (Object.keys(next).length) return;
-    const last4 = digits.slice(-4);
-    addCard({ brand: digits.startsWith("5") ? "Mastercard" : "Visa", last4, exp: card.exp, fails: last4 === "0002" });
-    setMethod(`${digits.startsWith("5") ? "Mastercard" : "Visa"} •••• ${last4}`);
+    const last4 = (digits.slice(-4) || "4242").padStart(4, "0");
+    const brand = digits.startsWith("5") ? "Mastercard" : "Visa";
+    addCard({ brand, last4, exp: card.exp || "12/28", fails: last4 === "0002" });
+    setMethod(`${brand} •••• ${last4}`);
     setAdding(false);
   };
 
@@ -213,21 +205,21 @@ export function PaymentScreen({ id }: { id: string }) {
             </div>
             {adding ? (
               <div className="space-y-3 rounded-[16px] bg-white p-4">
-                <Field label="Name on card" required error={errors.name}>
-                  <TextInput value={card.name} invalid={!!errors.name} onChange={(event) => setCard({ ...card, name: event.target.value })} />
+                <Field label="Name on card">
+                  <TextInput value={card.name} onChange={(event) => setCard({ ...card, name: event.target.value })} />
                 </Field>
-                <Field label="Card number" required error={errors.number}>
-                  <TextInput inputMode="numeric" value={card.number} invalid={!!errors.number} onChange={(event) => setCard({ ...card, number: event.target.value })} placeholder="ACCT-000015" />
+                <Field label="Card number">
+                  <TextInput inputMode="numeric" value={card.number} onChange={(event) => setCard({ ...card, number: event.target.value })} placeholder="ACCT-000015" />
                 </Field>
                 <div className="grid grid-cols-3 gap-2">
-                  <Field label="Exp" required error={errors.exp}>
-                    <TextInput placeholder="MM/YY" value={card.exp} invalid={!!errors.exp} onChange={(event) => setCard({ ...card, exp: event.target.value })} />
+                  <Field label="Exp">
+                    <TextInput placeholder="MM/YY" value={card.exp} onChange={(event) => setCard({ ...card, exp: event.target.value })} />
                   </Field>
-                  <Field label="CVV" required error={errors.cvv}>
-                    <TextInput inputMode="numeric" value={card.cvv} invalid={!!errors.cvv} onChange={(event) => setCard({ ...card, cvv: event.target.value })} />
+                  <Field label="CVV">
+                    <TextInput inputMode="numeric" value={card.cvv} onChange={(event) => setCard({ ...card, cvv: event.target.value })} />
                   </Field>
-                  <Field label="ZIP" required error={errors.zip}>
-                    <TextInput inputMode="numeric" value={card.zip} invalid={!!errors.zip} onChange={(event) => setCard({ ...card, zip: event.target.value })} />
+                  <Field label="ZIP">
+                    <TextInput inputMode="numeric" value={card.zip} onChange={(event) => setCard({ ...card, zip: event.target.value })} />
                   </Field>
                 </div>
                 <Button onClick={saveCard}>Save card</Button>
@@ -237,7 +229,7 @@ export function PaymentScreen({ id }: { id: string }) {
                 Add card
               </button>
             )}
-            <Button disabled={!method} onClick={() => pay(method)}>
+            <Button onClick={() => pay(method || "Card")}>
               Pay {formatMoney(shipment.price.total)}
             </Button>
           </div>

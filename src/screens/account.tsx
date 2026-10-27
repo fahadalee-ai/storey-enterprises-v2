@@ -222,7 +222,6 @@ export function EditProfileScreen() {
   const [phone, setPhone] = useState(user?.phone ?? "");
   const [photo, setPhoto] = useState(user?.photo ?? "");
   const [accountType, setAccountType] = useState(user?.accountType ?? "individual");
-  const [error, setError] = useState("");
   useEffect(() => {
     if (focusField === "Full name") document.getElementById("fullName")?.focus();
     if (focusField === "Email") document.getElementById("email")?.focus();
@@ -235,10 +234,6 @@ export function EditProfileScreen() {
           className="space-y-4"
           onSubmit={(event) => {
             event.preventDefault();
-            if (!fullName.trim() || !email.includes("@") || phone.replace(/\D/g, "").length !== 10) {
-              setError("Check name, email, and a 10-digit phone.");
-              return;
-            }
             updateUser({ fullName, email, phone: formatPhone(phone), photo, accountType });
             navigate({ to: "/profile" });
           }}
@@ -263,22 +258,21 @@ export function EditProfileScreen() {
               />
             </label>
           </div>
-          <Field label="Full name" required>
+          <Field label="Full name">
             <TextInput id="fullName" value={fullName} onChange={(event) => setFullName(event.target.value)} />
           </Field>
-          <Field label="Email" required>
+          <Field label="Email">
             <TextInput id="email" type="email" value={email} onChange={(event) => setEmail(event.target.value)} />
           </Field>
-          <Field label="Mobile phone" required>
+          <Field label="Mobile phone">
             <TextInput id="phone" value={phone} onChange={(event) => setPhone(formatPhone(event.target.value))} />
           </Field>
-          <Field label="Account type" required>
+          <Field label="Account type">
             <select className={inputClass} value={accountType} onChange={(event) => setAccountType(event.target.value as "individual" | "business")}>
               <option value="individual">Individual</option>
               <option value="business">Business</option>
             </select>
           </Field>
-          {error ? <p className="text-[12px] text-[#DC2626]">{error}</p> : null}
           <Button type="submit">Save</Button>
         </form>
       </ProfilePage>
@@ -294,7 +288,6 @@ export function BillingScreen() {
   const [billingAddress, setBillingAddress] = useState(user?.billingAddress ?? "");
   const [billingEmail, setBillingEmail] = useState(user?.billingEmail ?? "");
   const [taxId, setTaxId] = useState(user?.taxId ?? "");
-  const [error, setError] = useState("");
   useEffect(() => {
     const id = focusField === "Billing email" ? "billingEmail" : focusField === "Billing address" ? "billingAddress" : focusField === "Company name" ? "companyName" : "";
     if (id) document.getElementById(id)?.focus();
@@ -307,19 +300,11 @@ export function BillingScreen() {
           className="space-y-4"
           onSubmit={(event) => {
             event.preventDefault();
-            if (user?.accountType === "business" && !companyName.trim()) {
-              setError("Company name is required.");
-              return;
-            }
-            if (billingEmail.trim() && !billingEmail.includes("@")) {
-              setError("Enter a billing email.");
-              return;
-            }
             updateUser({ companyName, facilityType, billingAddress, billingEmail, taxId });
             navigate({ to: "/profile" });
           }}
         >
-          <Field label="Company name" required={user?.accountType === "business"}>
+          <Field label="Company name">
             <TextInput id="companyName" value={companyName} onChange={(event) => setCompanyName(event.target.value)} />
           </Field>
           <Field label="Facility type">
@@ -332,13 +317,12 @@ export function BillingScreen() {
           <Field label="Billing address">
             <TextArea id="billingAddress" value={billingAddress} onChange={(event) => setBillingAddress(event.target.value)} />
           </Field>
-          <Field label="Billing email" required>
+          <Field label="Billing email">
             <TextInput id="billingEmail" type="email" value={billingEmail} onChange={(event) => setBillingEmail(event.target.value)} />
           </Field>
           <Field label="Tax ID" hint="Optional">
             <TextInput value={taxId} onChange={(event) => setTaxId(event.target.value)} />
           </Field>
-          {error ? <p className="text-[12px] text-[#DC2626]">{error}</p> : null}
           <Button type="submit">Save</Button>
         </form>
       </ProfilePage>
@@ -439,19 +423,18 @@ export function PaymentMethodsScreen() {
         </div>
       </ProfilePage>
       <Sheet open={open} title="Add card" onClose={() => setOpen(false)}>
-        <Field label="Card number" required>
+        <Field label="Card number">
           <TextInput value={number} onChange={(event) => setNumber(event.target.value)} placeholder="4242 4242 4242 4242" />
         </Field>
         <div className="mt-3">
-          <Field label="Exp" required>
+          <Field label="Exp">
             <TextInput placeholder="MM/YY" value={exp} onChange={(event) => setExp(event.target.value)} />
           </Field>
         </div>
         <div className="mt-4">
           <Button
             onClick={() => {
-              const last4 = number.replace(/\D/g, "").slice(-4);
-              if (last4.length < 4) return;
+              const last4 = (number.replace(/\D/g, "").slice(-4) || "4242").padStart(4, "0");
               addCard({ brand: "Visa", last4, exp: exp || "12/28", fails: last4 === "0002" });
               setNumber("");
               setExp("");
@@ -557,7 +540,6 @@ export function DeleteAccountScreen() {
   const navigate = useNavigate();
   const { deleteAccount } = useApp();
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
   return (
     <Screen>
       <ProfilePage title="Delete account" subtitle="This removes the sign-in profile on this device.">
@@ -565,19 +547,15 @@ export function DeleteAccountScreen() {
           className="space-y-4"
           onSubmit={(event) => {
             event.preventDefault();
-            const result = deleteAccount(password);
-            if (!result.ok) {
-              setError("Password does not match.");
-              return;
-            }
+            deleteAccount(password);
             navigate({ to: "/login" });
           }}
         >
           <div className={cn(cardClass(), "p-4 text-[14px] leading-relaxed text-[#475569]")}>
             Business, payment, audit, and delivery records may be retained as required.
           </div>
-          <Field label="Password" required error={error}>
-            <TextInput type="password" value={password} invalid={!!error} onChange={(event) => setPassword(event.target.value)} />
+          <Field label="Password">
+            <TextInput type="password" value={password} onChange={(event) => setPassword(event.target.value)} />
           </Field>
           <Button type="submit" variant="danger">
             Delete account
